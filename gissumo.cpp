@@ -26,21 +26,57 @@ int main(int, char *argv[])
 	 * as ticpp kept spewing linker errors.
 	 */
 
-	cout << "DEBUG loading XML..." << flush;
-
+	// using boost and vector structs
 	ptree tree;
 	read_xml(XML_PATH, tree);
-	const ptree & formats = tree.get_child("fcd-export", empty_ptree());
+	std::vector<Timestep> fcd_output;
 
-	cout << " done.\n";
+	// traverse tree and fill fcd_output with timesteps
+	BOOST_FOREACH ( ptree::value_type const& iterTimestep, tree.get_child("fcd-export") )
+	{
+		if(iterTimestep.first == "timestep")
+		{
+			Timestep t;
 
-    BOOST_FOREACH(const ptree::value_type &f, formats){
-        string at = f.first + ".<xmlattr>";
-        const ptree & attributes = f.second.get_child("<xmlattr>", empty_ptree());
-        BOOST_FOREACH(const ptree::value_type &v, attributes){
-            cout << at << ' ' << v.first.data() << '=' << v.second.data() << '\n';
-        }
-    }
+			// get time attribute
+			t.time = iterTimestep.second.get<float>("<xmlattr>.time",0);
+
+			// get second level tree 'vehicles'
+			BOOST_FOREACH ( ptree::value_type const& iterVehicle, iterTimestep.second )
+			{
+				if(iterVehicle.first == "vehicle")
+				{
+					Vehicle v;
+
+					v.id = iterVehicle.second.get<unsigned short>("<xmlattr>.id",0);
+					v.x = iterVehicle.second.get<double>("<xmlattr>.x",0);
+					v.y = iterVehicle.second.get<double>("<xmlattr>.y",0);
+					v.speed = iterVehicle.second.get<double>("<xmlattr>.speed",0);
+
+					t.vehiclelist.push_back(v);
+				}
+			} // end BOOST_FOREACH ( iterTimestep.second )
+
+			// store this timestep entry
+			fcd_output.push_back(t);
+
+		} // end if(iterTimestep.first == "timestep")
+	} // end BOOST_FOREACH ( "fcd-export" )
+
+	// DEBUG, print all timesteps and vehicles
+	for(std::vector<Timestep>::iterator iter1=fcd_output.begin(); iter1 != fcd_output.end(); iter1++)
+	{
+		cout << "time " << iter1->time << '\n';
+
+		for(std::vector<Vehicle>::iterator iter2=iter1->vehiclelist.begin(); iter2!=iter1->vehiclelist.end(); iter2++)
+			cout << std::setprecision(8)
+					<< "\tvehicle"
+					<< " id " << iter2->id
+					<< " x " << iter2->x
+					<< " y " << iter2->y
+					<< " speed " << iter2->speed
+					<< '\n';
+	}
 
 
 	/* Init step 2: open a connection to PostgreSQL
