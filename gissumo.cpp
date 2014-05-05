@@ -63,20 +63,20 @@ int main(int, char *argv[])
 		} // end if(iterTimestep.first == "timestep")
 	} // end BOOST_FOREACH ( "fcd-export" )
 
-	// DEBUG, print all timesteps and vehicles
-	for(std::vector<Timestep>::iterator iter1=fcd_output.begin(); iter1 != fcd_output.end(); iter1++)
-	{
-		cout << "time " << iter1->time << '\n';
-
-		for(std::vector<Vehicle>::iterator iter2=iter1->vehiclelist.begin(); iter2!=iter1->vehiclelist.end(); iter2++)
-			cout << std::setprecision(8)
-					<< "\tvehicle"
-					<< " id " << iter2->id
-					<< " x " << iter2->x
-					<< " y " << iter2->y
-					<< " speed " << iter2->speed
-					<< '\n';
-	}
+//	// DEBUG, print all timesteps and vehicles
+//	for(std::vector<Timestep>::iterator iter1=fcd_output.begin(); iter1 != fcd_output.end(); iter1++)
+//	{
+//		cout << "time " << iter1->time << '\n';
+//
+//		for(std::vector<Vehicle>::iterator iter2=iter1->vehiclelist.begin(); iter2!=iter1->vehiclelist.end(); iter2++)
+//			cout << std::setprecision(8)
+//					<< "\tvehicle"
+//					<< " id " << iter2->id
+//					<< " x " << iter2->x
+//					<< " y " << iter2->y
+//					<< " speed " << iter2->speed
+//					<< '\n';
+//	}
 
 
 	/* Init step 2: open a connection to PostgreSQL
@@ -89,7 +89,7 @@ int main(int, char *argv[])
 	 *
 	 */
 
-	if(isLineOfSight(conn,-40910,166245,-40810,166230) > 0) cout << "NLOS\n"; else cout << "LOS\n";
+	if(isLineOfSight(conn,-8.620151,41.164420,-8.619759,41.164364) > 0) cout << "NLOS\n"; else cout << "LOS\n";
 }
 
 
@@ -97,10 +97,15 @@ bool isLineOfSight (pqxx::connection &c, float x1, float y1, float x2, float y2)
 {
 	pqxx::work txn(c);
 	
+	// TODO
 	pqxx::result r = txn.exec(
 		"SELECT COUNT(id) "
 		"FROM edificios "
-		"WHERE ST_Intersects(geom, ST_GeomFromText('LINESTRING(-40910 166245,-40810 166230)',27492))"
+		"WHERE ST_Intersects(geom, ST_GeomFromText('LINESTRING("
+			+ pqxx::to_string(x1) + " "
+			+ pqxx::to_string(y1) + ","
+			+ pqxx::to_string(x2) + " "
+			+ pqxx::to_string(y2) + ")',4326))"
 	);
 	txn.commit();
 
@@ -110,3 +115,22 @@ bool isLineOfSight (pqxx::connection &c, float x1, float y1, float x2, float y2)
 		return 0;
 }
 
+bool isPointObstructed(pqxx::connection &c, float xx, float yy)
+{
+	pqxx::work txn(c);
+
+	pqxx::result r = txn.exec(
+		"SELECT COUNT(id) "
+		"FROM edificios "
+		"WHERE ST_Intersects(geom, ST_GeomFromText('POINT("
+			+ pqxx::to_string(xx) + " "
+			+ pqxx::to_string(yy) + ")',4326))"
+	);
+	txn.commit();
+
+	if(r[0][0].as<int>() > 0)
+		return 1;
+	else
+		return 0;
+
+}
