@@ -84,6 +84,9 @@ int main(int, char *argv[])
 	{
 
 	}	// end for(timestep)
+
+
+
 }
 
 
@@ -123,7 +126,13 @@ bool isPointObstructed(pqxx::connection &c, float xx, float yy)
 
 void determineCellFromWGS84 (float xgeo, float ygeo, unsigned short &xcell, unsigned short &ycell)
 {
-	// TODO
+	xcell=deltaSeconds(xgeo,XREFERENCE);
+	ycell=deltaSeconds(ygeo,YREFERENCE);
+}
+
+unsigned int deltaSeconds(float c1, float c2)
+{
+	return (unsigned int) floor(fabs(c1-c2)*3600);
 }
 
 
@@ -161,3 +170,10 @@ void determineCellFromWGS84 (float xgeo, float ygeo, unsigned short &xcell, unsi
 
 
 //	if(isLineOfSight(conn,-8.620151,41.164420,-8.619759,41.164364)) cout << "NLOS\n"; else cout << "LOS\n";
+
+
+//	// DEBUG deltaSeconds
+//	// -8.61250 (08¼36"45'W) to -8.62083 (08¼37"15'W) should be 30"
+//	cout << "city height: " << deltaSeconds(41.16884,41.160837) << endl;
+//	cout << "city width: " << deltaSeconds(-8.622678,-8.609375) << endl;
+

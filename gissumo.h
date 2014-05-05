@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 #include <array>
+#include <cmath>
 #include <pqxx/pqxx>
 #include <boost/foreach.hpp>
 #include <boost/property_tree/ptree.hpp>
@@ -14,9 +15,32 @@ using namespace std;
 using namespace boost;
 using namespace boost::property_tree;
 
+
+
+/* Definitions
+   ----------- */
+
+/* These are the top left origin points for our map, in WGS84 coordinates
+ * From pre-analysis of our map we've determined the limits to be:
+ * Top Left: 41.16884 -8.622678
+ * Bottom Right: 41.160837 -8.609375
+ */
+// TODO: add margins for RSU coverage, 5-6 seconds ?
+#define XREFERENCE 41.16884
+#define YREFERENCE -8.622678
+
+// This is the coverage map size, in cells, of an RSU (e.g. '11' means 5 cell radius, RSU at center cell)
 #define PARKEDCELLCOVERAGE 11
-#define CITYWIDTH 25 // xx
-#define CITYHEIGHT 25 // yy
+
+// The size of the city map in cells
+// TODO: add margins for RSU coverage, 5-6 seconds ?
+#define CITYWIDTH 47 // xx
+#define CITYHEIGHT 28 // yy
+
+
+
+/* Functions
+   --------- */
 
 // Returns true if the path between (x1,y1) and (x2,y2) is obstructed, false otherwise.
 bool isLineOfSight(pqxx::connection &c, float x1, float y1, float x2, float y2);
@@ -26,6 +50,21 @@ bool isPointObstructed(pqxx::connection &c, float xx, float yy);
 
 // Given a WGS84 pair of coordinates, return an integer cell position
 void determineCellFromWGS84 (float xgeo, float ygeo, unsigned short &xcell, unsigned short &ycell);
+
+// Returns the distance in seconds between two coordinates on the same bearing (two latitudes or two longitudes)
+unsigned int deltaSeconds(float c1, float c2);
+
+
+
+/* Classes and Structs
+   ------------------- */
+
+class CityMap {
+public:
+	array< array<unsigned short,CITYHEIGHT>,CITYWIDTH > map;	// city coverage map, (0,0) on Top Left
+
+	CityMap() { for(int i=0; i<CITYWIDTH; i++) map[i].fill(0); }
+};
 
 class RSU {
 public:
