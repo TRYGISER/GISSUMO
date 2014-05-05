@@ -2,10 +2,6 @@
 
 #define XML_PATH "./fcdoutput.xml"
 
-using namespace std;
-using namespace boost;
-using namespace boost::property_tree;
-
 const ptree& empty_ptree(){
     static ptree t;
     return t;
@@ -74,7 +70,20 @@ int main(int, char *argv[])
 	 * otherwise the RSU will always return NLOS to all vehicles.
 	 */
 
+	// setup vectors to keep the list of RSUs and their status
+	std::vector<RSU> rsuList;
 
+	// setup 2D maps for RSU locations, overall coverage
+
+
+	// now run through every time step
+	for(std::vector<Timestep>::iterator
+			iterTime = fcd_output.begin();
+			iterTime != fcd_output.end();
+			iterTime++ )
+	{
+
+	}	// end for(timestep)
 }
 
 
@@ -109,7 +118,12 @@ bool isPointObstructed(pqxx::connection &c, float xx, float yy)
 	);
 	txn.commit();
 
-	if(r[0][0].as<int>() > 0) return 1;	else return 0;
+	if(r[0][0].as<int>() > 0) return 1; else return 0;
+}
+
+void determineCellFromWGS84 (float xgeo, float ygeo, unsigned short &xcell, unsigned short &ycell)
+{
+	// TODO
 }
 
 
