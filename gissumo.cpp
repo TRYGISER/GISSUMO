@@ -7,8 +7,35 @@ const ptree& empty_ptree(){
     return t;
 }
 
-int main(int, char *argv[])
+int main(int argc, char *argv[])
 {
+	/* Process command-line options
+	 * Using boost::program_options
+	 */
+
+	// Defaults
+	bool m_printVehicleMap = false;
+	bool m_debug = false;
+
+	// List of command line options
+	options_description cliOptDesc("Options");
+	cliOptDesc.add_options()
+	    ("print-vehicle-map", "prints an ASCII map of vehicle positions")
+	    ("debug", "enable debug mode (very verbose)")
+	    ("help", "give this help list")
+	;
+
+	// Parse options
+	variables_map varMap;
+	store(parse_command_line(argc, argv, cliOptDesc), varMap);
+	notify(varMap);
+
+	// Process options
+	if (varMap.count("print-vehicle-map")) 		m_printVehicleMap=true;
+	if (varMap.count("debug")) 					m_debug=true;
+	if (varMap.count("help")) 					{ cout << cliOptDesc; return 1; }
+
+
 	/* Init step 1: parse SUMO logs
 	 * This expects SUMO's floating car data (FCD) output with geographic
 	 * coordinates (--fcd-output.geo=true)
@@ -44,8 +71,8 @@ int main(int, char *argv[])
 					Vehicle v;
 
 					v.id = iterVehicle.second.get<unsigned short>("<xmlattr>.id",0);
-					v.x = iterVehicle.second.get<double>("<xmlattr>.x",0);
-					v.y = iterVehicle.second.get<double>("<xmlattr>.y",0);
+					v.xgeo = iterVehicle.second.get<double>("<xmlattr>.x",0);
+					v.ygeo = iterVehicle.second.get<double>("<xmlattr>.y",0);
 					v.speed = iterVehicle.second.get<double>("<xmlattr>.speed",0);
 
 					t.vehiclelist.push_back(v);
@@ -74,7 +101,8 @@ int main(int, char *argv[])
 	std::vector<RSU> rsuList;
 
 	// setup 2D maps for RSU locations, overall coverage
-
+	CityMapChar vehicleLocations;
+	CityMapNum globalCoverage;
 
 	// now run through every time step
 	for(std::vector<Timestep>::iterator
@@ -82,6 +110,35 @@ int main(int, char *argv[])
 			iterTime != fcd_output.end();
 			iterTime++ )
 	{
+		usleep(500000);
+		cout << "Time step: " << iterTime->time << endl;
+
+		// run through each vehicle
+		for(std::vector<Vehicle>::iterator
+				iterVeh=iterTime->vehiclelist.begin();
+				iterVeh!=iterTime->vehiclelist.end();
+				iterVeh++)
+		{
+			// check the cell location of this vehicle
+			unsigned short xcell=0, ycell=0;
+			determineCellFromWGS84 (iterVeh->xgeo, iterVeh->ygeo, xcell, ycell);
+
+			// tag the vehicle citymap
+			vehicleLocations.map[xcell][ycell]='o';
+
+
+		}	// end for(vehicle)
+
+		// print the vehicle map
+		printCityMap(vehicleLocations);
+
+		// clean map
+		for(short yy=0;yy<CITYWIDTH;yy++)
+		{
+			for(short xx=0;xx<CITYHEIGHT;xx++)
+				if(vehicleLocations.map[yy][xx]=='o')
+					vehicleLocations.map[yy][xx]='.';
+		}
 
 	}	// end for(timestep)
 
@@ -135,6 +192,16 @@ unsigned int deltaSeconds(float c1, float c2)
 	return (unsigned int) floor(fabs(c1-c2)*3600);
 }
 
+void printCityMap (CityMapChar cmap)
+{
+	for(short yy=0;yy<CITYWIDTH;yy++)
+	{
+		for(short xx=0;xx<CITYHEIGHT;xx++)
+			cout << cmap.map[yy][xx] << ' ';
+		cout << '\n';
+	}
+}
+
 
 /* Code examples and debug
  */
@@ -177,3 +244,8 @@ unsigned int deltaSeconds(float c1, float c2)
 //	cout << "city height: " << deltaSeconds(41.16884,41.160837) << endl;
 //	cout << "city width: " << deltaSeconds(-8.622678,-8.609375) << endl;
 
+//			// DEBUG, check what cells each vehicle is on
+//			unsigned short xcell=0, ycell=0;
+//			cout << "xgeo " << iterVeh->xgeo << " ygeo " << iterVeh->ygeo << '\n';
+//			determineCellFromWGS84 (iterVeh->xgeo, iterVeh->ygeo, xcell, ycell);
+//			cout << xcell << '\t' << ycell << '\n';
