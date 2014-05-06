@@ -52,8 +52,14 @@ bool GIS_isLineOfSight(pqxx::connection &c, float x1, float y1, float x2, float 
 // Returns true if the point at (xx,yy) is intersecting with something.
 bool GIS_isPointObstructed(pqxx::connection &c, float xx, float yy);
 
-// Adds a new point to the database. Returns the unique identifier 'gid'.
+// Adds a new point to the database. Returns the unique identifier 'gid'. Sets 'feattype' to 2222.
 unsigned short GIS_addPoint(pqxx::connection &c, float xx, float yy, unsigned short id);
+
+// Updates the coordinates of a point via id.
+void GIS_updatePoint(pqxx::connection &c, float xx, float yy, unsigned short id);
+
+// Removes all POINTs from the database (feattyp 2222).
+void GIS_clearAllPoints(pqxx::connection &c);
 
 // Given a WGS84 pair of coordinates, return an integer cell position.
 void determineCellFromWGS84 (float xgeo, float ygeo, unsigned short &xcell, unsigned short &ycell);
@@ -93,6 +99,7 @@ public:
 class RSU {
 public:
 	unsigned short id;		// numeric identifier
+	unsigned short gid;		// GIS numeric identifier
 	bool active;			// active status
 	unsigned short xcell;	// x,y position in a cell map
 	unsigned short ycell;
@@ -113,7 +120,7 @@ public:
 
 	RSU()
 	{
-		id=0;
+		id=0; gid=0;
 		active = false;
 		xcell=0; ycell=0;
 		xgeo=0; ygeo=0;

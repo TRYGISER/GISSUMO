@@ -92,6 +92,8 @@ int main(int argc, char *argv[])
 	 */
 	pqxx::connection conn("dbname=shapefiledb user=abreis");
 
+	// Clear all POINT entities from the database from past simulations.
+	GIS_clearAllPoints(conn);
 
 	/* Simulation starts here.
 	 * We have a 0.37% mismatch error between the SUMO roads and the Porto shapefile data.
@@ -107,16 +109,18 @@ int main(int argc, char *argv[])
 
 	// TEST: add an active RSU
 	RSU testRSU;
-	testRSU.id=0;
+	testRSU.id=1;
 	testRSU.ygeo=41.164798;
 	testRSU.xgeo=-8.616050;
-	determineCellFromWGS84(testRSU.xgeo,testRSU.ygeo,testRSU.xcell,testRSU.ycell);
 	testRSU.active=true;
+	// get cell coordinates from WGS84
+	determineCellFromWGS84(testRSU.xgeo,testRSU.ygeo,testRSU.xcell,testRSU.ycell);
+	// add RSU to GIS and get GIS unique id (gid)
+	testRSU.gid = GIS_addPoint(conn,testRSU.xgeo,testRSU.ygeo,testRSU.id);
+	cout << "added point got gid=" << testRSU.gid << endl;
+
 	rsuList.push_back(testRSU);
 	vehicleLocations.map[testRSU.xcell][testRSU.ycell]='R';
-
-
-
 
 
 	// Run through every time step
@@ -175,6 +179,12 @@ int main(int argc, char *argv[])
 				if( GIS_isPointObstructed(conn,iter2->xgeo,iter2->ygeo) ) bumpcount++; else clearcount++;
 		cout << "bump " << bumpcount << " clear " << clearcount << endl;
 	}
+
+
+	// Clear all POINT entities from the database from past simulations.
+//	GIS_clearAllPoints(conn);
+
+	return 0;
 }
 
 
@@ -184,7 +194,7 @@ int main(int argc, char *argv[])
 bool GIS_isLineOfSight (pqxx::connection &c, float x1, float y1, float x2, float y2)
 {
 	pqxx::work txn(c);
-	
+
 	pqxx::result r = txn.exec(
 		"SELECT COUNT(id) "
 		"FROM edificios "
@@ -217,21 +227,39 @@ bool GIS_isPointObstructed(pqxx::connection &c, float xx, float yy)
 
 unsigned short GIS_addPoint(pqxx::connection &c, float xx, float yy, unsigned short id)
 {
-	pqxx::work txn(c);
-	pqxx::result r = txn.exec(
-			"INSERT INTO edificios(id, geom) "
+	pqxx::work txnInsert(c);
+	pqxx::result r = txnInsert.exec(
+			"INSERT INTO edificios(id, geom, feattyp) "
 			"VALUES ("
 				+ pqxx::to_string(id)
 				+ ", ST_GeomFromText('POINT("
 				+ pqxx::to_string(xx) + " "
-				+ pqxx::to_string(yy) + ")',4326) )"
+				+ pqxx::to_string(yy) + ")',4326), 2222) RETURNING gid"
 		);
-	txn.commit();
+	txnInsert.commit();
 
-
-
+	return r[0][0].as<int>();
 }
 
+void GIS_updatePoint(pqxx::connection &c, float xx, float yy, unsigned short id)
+{
+	pqxx::work txnUpdate(c);
+	txnUpdate.exec(
+			"UPDATE edificios SET geom=ST_GeomFromText('POINT("
+			+ pqxx::to_string(xx) + " "
+			+ pqxx::to_string(yy) + ")',4326) WHERE id="
+			+ to_string(id)
+		);
+	txnUpdate.commit();
+}
+
+
+void GIS_clearAllPoints(pqxx::connection &c)
+{
+	pqxx::work txn(c);
+	txn.exec( "DELETE FROM edificios WHERE feattyp='2222'");
+	txn.commit();
+}
 
 void determineCellFromWGS84 (float xgeo, float ygeo, unsigned short &xcell, unsigned short &ycell)
 {
