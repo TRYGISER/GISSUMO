@@ -7,8 +7,6 @@
 #include <array>
 #include <cmath>
 
-#include <unistd.h>	// for sleep
-
 #include <pqxx/pqxx>
 #include <boost/foreach.hpp>
 #include <boost/property_tree/ptree.hpp>
@@ -49,10 +47,13 @@ using namespace boost::program_options;
    --------- */
 
 // Returns true if the path between (x1,y1) and (x2,y2) is obstructed, false otherwise.
-bool isLineOfSight(pqxx::connection &c, float x1, float y1, float x2, float y2);
+bool GIS_isLineOfSight(pqxx::connection &c, float x1, float y1, float x2, float y2);
 
 // Returns true if the point at (xx,yy) is intersecting with something.
-bool isPointObstructed(pqxx::connection &c, float xx, float yy);
+bool GIS_isPointObstructed(pqxx::connection &c, float xx, float yy);
+
+// Adds a new point to the database. Returns the unique identifier 'gid'.
+unsigned short GIS_addPoint(pqxx::connection &c, float xx, float yy, unsigned short id);
 
 // Given a WGS84 pair of coordinates, return an integer cell position.
 void determineCellFromWGS84 (float xgeo, float ygeo, unsigned short &xcell, unsigned short &ycell);

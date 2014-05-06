@@ -15,12 +15,14 @@ int main(int argc, char *argv[])
 
 	// Defaults
 	bool m_printVehicleMap = false;
+	bool m_validVehicle = false;
 	bool m_debug = false;
 
 	// List of command line options
 	options_description cliOptDesc("Options");
 	cliOptDesc.add_options()
-	    ("print-vehicle-map", "prints an ASCII map of vehicle positions")
+		("print-vehicle-map", "prints an ASCII map of vehicle positions")
+		("check-valid-vehicles", "counts number of vehicles in the clear")
 	    ("debug", "enable debug mode (very verbose)")
 	    ("help", "give this help list")
 	;
@@ -31,12 +33,13 @@ int main(int argc, char *argv[])
 	notify(varMap);
 
 	// Process options
-	if (varMap.count("print-vehicle-map")) 		m_printVehicleMap=true;
 	if (varMap.count("debug")) 					m_debug=true;
+	if (varMap.count("print-vehicle-map")) 		m_printVehicleMap=true;
+	if (varMap.count("check-valid-vehicles"))	m_validVehicle=true;
 	if (varMap.count("help")) 					{ cout << cliOptDesc; return 1; }
 
 
-	/* Init step 1: parse SUMO logs
+	/* Parse SUMO logs
 	 * This expects SUMO's floating car data (FCD) output with geographic
 	 * coordinates (--fcd-output.geo=true)
 	 * 
@@ -84,7 +87,7 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	/* Init step 2: open a connection to PostgreSQL
+	/* Open a connection to PostgreSQL
 	 * A password can be added to this string.
 	 */
 	pqxx::connection conn("dbname=shapefiledb user=abreis");
@@ -98,20 +101,34 @@ int main(int argc, char *argv[])
 	 */
 
 	// setup vectors to keep the list of RSUs and their status
-	std::vector<RSU> rsuList;
+	std::vector<RSU> rsuList;			// vector to hold list of RSUs
+	CityMapChar vehicleLocations; 		// setup 2D map for vehicle locations
+//	CityMapNum globalCoverage;
 
-	// setup 2D maps for RSU locations, overall coverage
-	CityMapChar vehicleLocations;
-	CityMapNum globalCoverage;
+	// TEST: add an active RSU
+	RSU testRSU;
+	testRSU.id=0;
+	testRSU.ygeo=41.164798;
+	testRSU.xgeo=-8.616050;
+	determineCellFromWGS84(testRSU.xgeo,testRSU.ygeo,testRSU.xcell,testRSU.ycell);
+	testRSU.active=true;
+	rsuList.push_back(testRSU);
+	vehicleLocations.map[testRSU.xcell][testRSU.ycell]='R';
 
-	// now run through every time step
+
+
+
+
+	// Run through every time step
 	for(std::vector<Timestep>::iterator
 			iterTime = fcd_output.begin();
 			iterTime != fcd_output.end();
 			iterTime++ )
 	{
-		usleep(500000);
-		cout << "Time step: " << iterTime->time << endl;
+		/*
+		 * Beginning of each time step
+		 */
+		if(m_debug) cout << "Time step: " << iterTime->time << endl;
 
 		// run through each vehicle
 		for(std::vector<Vehicle>::iterator
@@ -119,35 +136,52 @@ int main(int argc, char *argv[])
 				iterVeh!=iterTime->vehiclelist.end();
 				iterVeh++)
 		{
+			/*
+			 * Beginning of each vehicle
+			 */
 			// check the cell location of this vehicle
 			unsigned short xcell=0, ycell=0;
 			determineCellFromWGS84 (iterVeh->xgeo, iterVeh->ygeo, xcell, ycell);
 
-			// tag the vehicle citymap
-			vehicleLocations.map[xcell][ycell]='o';
 
+
+
+			if(m_printVehicleMap)	vehicleLocations.map[xcell][ycell]='o';	// tag the vehicle citymap
 
 		}	// end for(vehicle)
 
-		// print the vehicle map
-		printCityMap(vehicleLocations);
+		/*
+		 * End of each time step
+		 */
 
-		// clean map
-		for(short yy=0;yy<CITYWIDTH;yy++)
+		if(m_printVehicleMap)	// --print-vehicle-map
 		{
-			for(short xx=0;xx<CITYHEIGHT;xx++)
-				if(vehicleLocations.map[yy][xx]=='o')
-					vehicleLocations.map[yy][xx]='.';
+			printCityMap(vehicleLocations);			// print the vehicle map
+			for(short yy=0;yy<CITYWIDTH;yy++)		// clean map
+				for(short xx=0;xx<CITYHEIGHT;xx++)
+					if(vehicleLocations.map[yy][xx]=='o')
+						vehicleLocations.map[yy][xx]='.';
 		}
-
 	}	// end for(timestep)
 
 
 
+	// DEBUG: go through every vehicle position and see if it's not inside a building.
+	if(m_validVehicle)
+	{
+		unsigned int bumpcount=0, clearcount=0;
+		for(std::vector<Timestep>::iterator iter1=fcd_output.begin(); iter1 != fcd_output.end(); iter1++)
+			for(std::vector<Vehicle>::iterator iter2=iter1->vehiclelist.begin(); iter2!=iter1->vehiclelist.end(); iter2++)
+				if( GIS_isPointObstructed(conn,iter2->xgeo,iter2->ygeo) ) bumpcount++; else clearcount++;
+		cout << "bump " << bumpcount << " clear " << clearcount << endl;
+	}
 }
 
 
-bool isLineOfSight (pqxx::connection &c, float x1, float y1, float x2, float y2)
+/* * */
+
+
+bool GIS_isLineOfSight (pqxx::connection &c, float x1, float y1, float x2, float y2)
 {
 	pqxx::work txn(c);
 	
@@ -165,7 +199,7 @@ bool isLineOfSight (pqxx::connection &c, float x1, float y1, float x2, float y2)
 	if(r[0][0].as<int>() > 0) return 1; else return 0;
 }
 
-bool isPointObstructed(pqxx::connection &c, float xx, float yy)
+bool GIS_isPointObstructed(pqxx::connection &c, float xx, float yy)
 {
 	pqxx::work txn(c);
 
@@ -181,6 +215,24 @@ bool isPointObstructed(pqxx::connection &c, float xx, float yy)
 	if(r[0][0].as<int>() > 0) return 1; else return 0;
 }
 
+unsigned short GIS_addPoint(pqxx::connection &c, float xx, float yy, unsigned short id)
+{
+	pqxx::work txn(c);
+	pqxx::result r = txn.exec(
+			"INSERT INTO edificios(id, geom) "
+			"VALUES ("
+				+ pqxx::to_string(id)
+				+ ", ST_GeomFromText('POINT("
+				+ pqxx::to_string(xx) + " "
+				+ pqxx::to_string(yy) + ")',4326) )"
+		);
+	txn.commit();
+
+
+
+}
+
+
 void determineCellFromWGS84 (float xgeo, float ygeo, unsigned short &xcell, unsigned short &ycell)
 {
 	xcell=deltaSeconds(xgeo,XREFERENCE);
@@ -194,10 +246,10 @@ unsigned int deltaSeconds(float c1, float c2)
 
 void printCityMap (CityMapChar cmap)
 {
-	for(short yy=0;yy<CITYWIDTH;yy++)
+	for(short yy=0;yy<CITYHEIGHT;yy++)
 	{
-		for(short xx=0;xx<CITYHEIGHT;xx++)
-			cout << cmap.map[yy][xx] << ' ';
+		for(short xx=0;xx<CITYWIDTH;xx++)
+			cout << cmap.map[xx][yy] << ' ';
 		cout << '\n';
 	}
 }
@@ -236,11 +288,11 @@ void printCityMap (CityMapChar cmap)
 //	cout << "bump " << bumpcount << " clear " << clearcount << endl;
 
 
-//	if(isLineOfSight(conn,-8.620151,41.164420,-8.619759,41.164364)) cout << "NLOS\n"; else cout << "LOS\n";
+//	if(GIS_isLineOfSight(conn,-8.620598,41.164310,-8.619410,41.164179)) cout << "NLOS\n"; else cout << "LOS\n";
 
 
 //	// DEBUG deltaSeconds
-//	// -8.61250 (08ผ36"45'W) to -8.62083 (08ผ37"15'W) should be 30"
+//	// -8.61250 (08ยบ36"45'W) to -8.62083 (08ยบ37"15'W) should be 30"
 //	cout << "city height: " << deltaSeconds(41.16884,41.160837) << endl;
 //	cout << "city width: " << deltaSeconds(-8.622678,-8.609375) << endl;
 
