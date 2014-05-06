@@ -6,4 +6,4 @@ Some geographic functions in the code assume the city of Porto as the location, 
 For the cell maps, the unit of measure was one WGS84 second.
 
 Be sure to change the geometry field in PostGIS to accept all geometries, otherwise adding POINTs will fail:
-# ALTER TABLE edificios ALTER COLUMN geom TYPE geometry(Geometry,4326);
+\# ALTER TABLE edificios ALTER COLUMN geom TYPE geometry(Geometry,4326);
