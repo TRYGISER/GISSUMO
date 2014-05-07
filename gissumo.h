@@ -12,6 +12,7 @@
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/xml_parser.hpp>
 #include <boost/program_options.hpp>
+#include <boost/lexical_cast.hpp>
 #include <boost/bind.hpp>
 
 using namespace std;
@@ -86,12 +87,22 @@ void determineCellFromWGS84 (float xgeo, float ygeo, unsigned short &xcell, unsi
 unsigned int deltaSeconds(float c1, float c2);
 
 // Prints a char CityMap to the terminal.
-class CityMapChar;
+class CityMapChar; class CityMapNum;
 void printCityMap (CityMapChar cmap);
+void printCityMap (CityMapNum cmap);
 
 // Returns the signal quality on a 1-5 scale based on distance and Line of Sight.
 unsigned short getSignalQuality(unsigned short distance, bool lineOfSight);
 
+// Applies the coverage map of an RSU to a global city map
+class RSU; class CityMapNum;
+void applyCoverageToCityMap(RSU rsu, CityMapNum &city);
+
+//
+//void applyCountToCityMap (ParkedCar car, CityMap* city)
+
+// Prints ASCII of a local coverage map.
+void printLocalCoverage(array< array<unsigned short,PARKEDCELLCOVERAGE>,PARKEDCELLCOVERAGE > coverage);
 
 
 /* Classes and Structs

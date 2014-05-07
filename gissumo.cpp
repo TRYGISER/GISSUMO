@@ -15,6 +15,7 @@ int main(int argc, char *argv[])
 
 	// Defaults
 	bool m_printVehicleMap = false;
+	bool m_printSignalMap = false;
 	bool m_validVehicle = false;
 	bool m_debug = false;
 
@@ -22,6 +23,7 @@ int main(int argc, char *argv[])
 	options_description cliOptDesc("Options");
 	cliOptDesc.add_options()
 		("print-vehicle-map", "prints an ASCII map of vehicle positions")
+		("print-signal-map", "prints an ASCII map of signal quality")
 		("check-valid-vehicles", "counts number of vehicles in the clear")
 	    ("debug", "enable debug mode (very verbose)")
 	    ("help", "give this help list")
@@ -35,6 +37,7 @@ int main(int argc, char *argv[])
 	// Process options
 	if (varMap.count("debug")) 					m_debug=true;
 	if (varMap.count("print-vehicle-map")) 		m_printVehicleMap=true;
+	if (varMap.count("print-signal-map")) 		m_printSignalMap=true;
 	if (varMap.count("check-valid-vehicles"))	m_validVehicle=true;
 	if (varMap.count("help")) 					{ cout << cliOptDesc; return 1; }
 
@@ -106,7 +109,7 @@ int main(int argc, char *argv[])
 	std::vector<RSU> rsuList;			// vector to hold list of RSUs
 	std::vector<Vehicle> vehiclesOnGIS;	// vehicles we've processed from SUMO to GIS
 	CityMapChar vehicleLocations; 		// 2D map for vehicle locations
-//	CityMapNum globalCoverage;
+	CityMapNum globalSignal;			// 2D map for global signal quality
 
 
 	// TEST: add an active RSU
@@ -237,22 +240,51 @@ int main(int argc, char *argv[])
 
 				}	// end distance!=0
 			}	// end for(RSU neighbors)
+
+			// now that the RSU's local map is updated, apply this map to the global signal map
+			applyCoverageToCityMap(*iterRSU, globalSignal);
+
 		}	// end for(RSUs)
 
 
 
-		// Wrap up.
 
-		if(m_printVehicleMap)	// --print-vehicle-map
+		// Wrap up.
+		if(m_printSignalMap && m_printVehicleMap)
 		{
+			// overlay RSUs on the map
 			for(vector<RSU>::iterator iter=rsuList.begin(); iter!=rsuList.end(); iter++)
 				if(iter->active)
-					vehicleLocations.map[iter->xcell][iter->ycell]='R';		// overlay RSUs on the map
-			printCityMap(vehicleLocations);			// print the vehicle map
-			for(short xx=0;xx<CITYWIDTH;xx++)		// clean map
+					vehicleLocations.map[iter->xcell][iter->ycell]='R';
+			// Apply signal map to vehicle map
+			for(short xx=0;xx<CITYWIDTH;xx++)
+				for(short yy=0;yy<CITYHEIGHT;yy++)
+					if(globalSignal.map[xx][yy])
+						vehicleLocations.map[xx][yy]=boost::lexical_cast<char>(globalSignal.map[xx][yy]);
+			// print the vehicle map
+			printCityMap(vehicleLocations);
+			// clean map
+			for(short xx=0;xx<CITYWIDTH;xx++)
 				for(short yy=0;yy<CITYHEIGHT;yy++)
 					if(vehicleLocations.map[xx][yy]=='o' || vehicleLocations.map[xx][yy]=='R')
 						vehicleLocations.map[xx][yy]='.';
+		}
+		else
+		{
+			if(m_printSignalMap)
+				printCityMap(globalSignal);
+
+			if(m_printVehicleMap)	// --print-vehicle-map
+			{
+				for(vector<RSU>::iterator iter=rsuList.begin(); iter!=rsuList.end(); iter++)
+					if(iter->active)
+						vehicleLocations.map[iter->xcell][iter->ycell]='R';		// overlay RSUs on the map
+				printCityMap(vehicleLocations);			// print the vehicle map
+				for(short xx=0;xx<CITYWIDTH;xx++)		// clean map
+					for(short yy=0;yy<CITYHEIGHT;yy++)
+						if(vehicleLocations.map[xx][yy]=='o' || vehicleLocations.map[xx][yy]=='R')
+							vehicleLocations.map[xx][yy]='.';
+			}
 		}
 	}	// end for(timestep)
 
@@ -434,6 +466,17 @@ void printCityMap (CityMapChar cmap)
 	}
 }
 
+void printCityMap (CityMapNum cmap)
+{
+	for(short yy=0;yy<CITYHEIGHT;yy++)
+	{
+		for(short xx=0;xx<CITYWIDTH;xx++)
+			if(cmap.map[xx][yy]>0) cout << cmap.map[xx][yy] << ' ';
+			else cout << "  ";
+		cout << '\n';
+	}
+}
+
 unsigned short getSignalQuality(unsigned short distance, bool lineOfSight)
 {
 	if(lineOfSight)
@@ -451,6 +494,44 @@ unsigned short getSignalQuality(unsigned short distance, bool lineOfSight)
 		if(distance<130) return 2;
 	}
 	return 0; 	// no signal
+}
+
+void applyCoverageToCityMap (RSU rsu, CityMapNum &city)
+{
+	for(short xx=0; xx<11; xx++)
+		for(short yy=0; yy<11; yy++)
+		{
+			short mapX=xx+rsu.xcell-5;
+			short mapY=yy+rsu.ycell-5;
+
+			// 'upgrade' coverage in a given cell if this RSU can cover it better
+			if(rsu.coverage[yy][xx] > city.map[mapY][mapX])
+				city.map[mapY][mapX] = rsu.coverage[yy][xx];
+		}
+}
+
+// TODO: needs revision, copied over from urbanParkedRSUs
+//void applyCountToCityMap (ParkedCar car, CityMap* city)
+//{
+//	for(short xx=0; xx<11; xx++)
+//		for(short yy=0; yy<11; yy++)
+//		{
+//			short mapX=xx+car.x-5;
+//			short mapY=yy+car.y-5;
+//
+//			if(car.coverage[yy][xx])
+//			city->map[mapY][mapX]++;	// bump number of cells covering the area
+//		}
+//}
+
+void printLocalCoverage(array< array<unsigned short,PARKEDCELLCOVERAGE>,PARKEDCELLCOVERAGE > coverage)
+{
+	for(short yy=0;yy<PARKEDCELLCOVERAGE;yy++)
+	{
+		for(short xx=0;xx<PARKEDCELLCOVERAGE;xx++)
+			cout << coverage[yy][xx] << ' ';
+		cout << '\n';
+	}
 }
 
 /* Code examples and debug
