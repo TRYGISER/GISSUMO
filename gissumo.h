@@ -12,6 +12,7 @@
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/xml_parser.hpp>
 #include <boost/program_options.hpp>
+#include <boost/bind.hpp>
 
 using namespace std;
 using namespace boost;
@@ -66,8 +67,8 @@ bool GIS_isPointObstructed(pqxx::connection &c, float xx, float yy);
 // Adds a new point to the database. Returns the unique identifier 'gid'. Sets 'feattype' to 2222.
 unsigned short GIS_addPoint(pqxx::connection &c, float xx, float yy, unsigned short id);
 
-// Updates the coordinates of a point via id.
-void GIS_updatePoint(pqxx::connection &c, float xx, float yy, unsigned short id);
+// Updates the coordinates of a point via GID.
+void GIS_updatePoint(pqxx::connection &c, float xx, float yy, unsigned short GID);
 
 // Removes all POINTs from the database (feattyp 2222).
 void GIS_clearAllPoints(pqxx::connection &c);
@@ -142,10 +143,16 @@ public:
 
 struct Vehicle
 {
-	unsigned short id = 0;
-	double xgeo = 0;
-	double ygeo = 0;
-	double speed = 0;
+	unsigned short id=0;	// SUMO identifier
+	unsigned short gid=0;	// GIS identifier
+	bool parked=false;		// Parked status
+
+	unsigned short xcell=0;	// x,y position in a cell map
+	unsigned short ycell=0;
+	float xgeo=0;				// x,y geographic position
+	float ygeo=0;
+
+	float speed = 0;
 };
 
 struct Timestep

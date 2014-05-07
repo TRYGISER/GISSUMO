@@ -102,14 +102,16 @@ int main(int argc, char *argv[])
 	 * otherwise the RSU will always return NLOS to all vehicles.
 	 */
 
-	// setup vectors to keep the list of RSUs and their status
+	// setup vectors and maps
 	std::vector<RSU> rsuList;			// vector to hold list of RSUs
+	std::vector<Vehicle> vehiclesOnGIS;	// vehicles we've processed from SUMO to GIS
 	CityMapChar vehicleLocations; 		// 2D map for vehicle locations
 //	CityMapNum globalCoverage;
 
+
 	// TEST: add an active RSU
 	RSU testRSU;
-	testRSU.id=1;
+	testRSU.id=10000;	// building IDs start on #17779, through #35140
 	testRSU.ygeo=41.164798;
 	testRSU.xgeo=-8.616050;
 	testRSU.active=true;
@@ -127,6 +129,8 @@ int main(int argc, char *argv[])
 //	unsigned short distTest = GIS_distanceToPointGID(conn,-8.6160498,41.165799,testRSU.gid);
 //	for(vector<unsigned short>::iterator iter=neighList.begin(); iter!=neighList.end(); iter++)
 //		cout << "\tNeighbor gid: " << *iter << '\n';
+
+
 
 	// Run through every time step
 	for(std::vector<Timestep>::iterator
@@ -148,14 +152,38 @@ int main(int argc, char *argv[])
 			/*
 			 * Beginning of each vehicle
 			 */
-			// check the cell location of this vehicle
-			unsigned short xcell=0, ycell=0;
-			determineCellFromWGS84 (iterVeh->xgeo, iterVeh->ygeo, xcell, ycell);
 
-			// TODO: update the positions of each vehicle in GIS and create new vehicles as needed
+			// 0 - Always needed: clone the vehicle and update its position in cells
+			Vehicle newVehicle = *iterVeh;						// copy vehicle from XML iterator
+			determineCellFromWGS84 (newVehicle.xgeo, newVehicle.ygeo,
+					newVehicle.xcell, newVehicle.ycell);		// determine vehicle location in cells
+			if(m_printVehicleMap)
+				vehicleLocations.map[newVehicle.xcell][newVehicle.ycell]='o';	// tag the vehicle citymap
+
+			// 1 - See if the vehicle is new.
+			vector<Vehicle>::iterator iterVehicleOnGIS = find_if(
+					vehiclesOnGIS.begin(),
+					vehiclesOnGIS.end(),
+					boost::bind(&Vehicle::id, _1) == iterVeh->id	// '_1' means "substitute with the first input argument"
+					);
+
+			if(iterVehicleOnGIS==vehiclesOnGIS.end())
+			{
+				// 2a - New vehicle. Add it to GIS, get GID, add to our local record.
+				newVehicle.gid = GIS_addPoint(conn,newVehicle.xgeo,newVehicle.ygeo,newVehicle.id);
+				vehiclesOnGIS.push_back(newVehicle);
+			}
+			else
+			{
+				// 2b - Existing vehicle: update its position on GIS via GID.
+				GIS_updatePoint(conn,newVehicle.xgeo,newVehicle.ygeo,newVehicle.gid);
+			}
 
 
-			if(m_printVehicleMap)	vehicleLocations.map[xcell][ycell]='o';	// tag the vehicle citymap
+
+			// 3 - Mark vehicles missing from this timestep as 'parked'.
+
+
 
 		}	// end for(vehicle)
 
@@ -299,14 +327,14 @@ unsigned short GIS_addPoint(pqxx::connection &c, float xx, float yy, unsigned sh
 	return r[0][0].as<int>();
 }
 
-void GIS_updatePoint(pqxx::connection &c, float xx, float yy, unsigned short id)
+void GIS_updatePoint(pqxx::connection &c, float xx, float yy, unsigned short gid)
 {
 	pqxx::work txnUpdate(c);
 	txnUpdate.exec(
 			"UPDATE edificios SET geom=ST_GeomFromText('POINT("
 			+ pqxx::to_string(xx) + " "
-			+ pqxx::to_string(yy) + ")',4326) WHERE id="
-			+ to_string(id)
+			+ pqxx::to_string(yy) + ")',4326) WHERE gid="
+			+ pqxx::to_string(gid)
 		);
 	txnUpdate.commit();
 }
