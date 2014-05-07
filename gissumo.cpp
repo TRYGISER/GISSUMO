@@ -179,10 +179,8 @@ int main(int argc, char *argv[])
 				GIS_updatePoint(conn,newVehicle.xgeo,newVehicle.ygeo,newVehicle.gid);
 			}
 
-
-
 			// 3 - Mark vehicles missing from this timestep as 'parked'.
-
+			// TODO
 
 
 		}	// end for(vehicle)
@@ -190,6 +188,60 @@ int main(int argc, char *argv[])
 		/*
 		 * End of each time step
 		 */
+
+		// Vehicles are now in the GIS map as POINTs.
+		// Go through each RSU and update its coverage map.
+		for(vector<RSU>::iterator iterRSU = rsuList.begin();
+			iterRSU != rsuList.end();
+			iterRSU++)
+		{
+			// first get the RSU's neighbors' GIDs
+			vector<unsigned short> rsuNeighs = GIS_getPointsInRange(conn,iterRSU->xgeo,iterRSU->ygeo,MAXRANGE);
+
+			// now run through each neighbor
+			for(vector<unsigned short>::iterator neighbor=rsuNeighs.begin();
+					neighbor != rsuNeighs.end();
+					neighbor++)
+			{
+				// get distance from neighbor to RSU
+				unsigned short distneigh = GIS_distanceToPointGID(conn,iterRSU->xgeo,iterRSU->ygeo,*neighbor);
+
+				if(distneigh)	// ignore ourselves (distance==0)
+				{
+					// carry debug
+					if(m_debug) cout << "DEBUG\t neighbor gid=" << *neighbor << " distance " << distneigh << '\n';
+
+					// get the neighbor's coordinates
+					float xgeoneigh=0, ygeoneigh=0;
+					GIS_getPointCoords(conn, *neighbor, xgeoneigh, ygeoneigh);
+					if(m_debug) cout << "DEBUG\t neighbor gid=" << *neighbor << setprecision(8) << " at xgeo=" << xgeoneigh << " ygeo=" << ygeoneigh << '\n';
+
+					// convert them to cells
+					unsigned short xcellneigh=0, ycellneigh=0;
+					determineCellFromWGS84(xgeoneigh,ygeoneigh,xcellneigh,ycellneigh);
+					if(m_debug) cout << "DEBUG\t neighbor gid=" << *neighbor << " cell coords as xcell=" << xcellneigh << "\t ycell=" << ycellneigh << '\n';
+
+					// determine LOS status
+					bool LOSneigh = GIS_isLineOfSight(conn,iterRSU->xgeo,iterRSU->ygeo,xgeoneigh,ygeoneigh);
+					if(m_debug) cout << "DEBUG\t neighbor gid=" << *neighbor << " LOS " << (LOSneigh?"true":"false") << '\n';
+
+					// determine signal quality
+					unsigned short signalneigh = getSignalQuality(distneigh,LOSneigh);
+					if(m_debug) cout << "DEBUG\t neighbor gid=" << *neighbor << " signal " << signalneigh << '\n';
+
+					// update RSU coverage map
+					short xrelative = 5 + xcellneigh - iterRSU->xcell;
+					short yrelative = 5 + ycellneigh - iterRSU->ycell;
+					iterRSU->coverage[xrelative][yrelative]=signalneigh;
+					if(m_debug) cout << "DEBUG\t neighbor gid=" << *neighbor << " on RSU map at xcell=" << xrelative << " ycell=" << yrelative << '\n';
+
+				}	// end distance!=0
+			}	// end for(RSU neighbors)
+		}	// end for(RSUs)
+
+
+
+		// Wrap up.
 
 		if(m_printVehicleMap)	// --print-vehicle-map
 		{
@@ -225,6 +277,21 @@ int main(int argc, char *argv[])
 
 
 /* * */
+
+void GIS_getPointCoords(pqxx::connection &c, unsigned short gid, float &xgeo, float &ygeo)
+{
+	pqxx::work txn(c);
+	pqxx::result r = txn.exec(
+			"SELECT ST_X(geom),ST_Y(geom) "
+			"FROM edificios "
+			"WHERE gid=" + pqxx::to_string(gid)
+		);
+	txn.commit();
+
+	xgeo = r[0][0].as<float>();
+	ygeo = r[0][1].as<float>();
+}
+
 
 vector<unsigned short> GIS_getPointsInRange(pqxx::connection &c, float xcenter, float ycenter, unsigned short range)
 {
@@ -262,8 +329,6 @@ unsigned short GIS_distanceToPointGID(pqxx::connection &c, float xx, float yy, u
 	txn1.commit();
 
 	std::string targetWKT(r1[0][0].as<string>());
-	cout << targetWKT << endl;
-
 
 	// now get the distance, convert to meters, and return
 	pqxx::work txn2(c);
@@ -289,11 +354,12 @@ bool GIS_isLineOfSight (pqxx::connection &c, float x1, float y1, float x2, float
 			+ pqxx::to_string(x1) + " "
 			+ pqxx::to_string(y1) + ","
 			+ pqxx::to_string(x2) + " "
-			+ pqxx::to_string(y2) + ")',4326))"
+			+ pqxx::to_string(y2) + ")',4326)) and feattyp='9790'"
 	);
 	txn.commit();
 
-	if(r[0][0].as<int>() > 0) return 1; else return 0;
+	// return false if line interesects, true otherwise
+	if(r[0][0].as<int>() > 0) return false; else return true;
 }
 
 bool GIS_isPointObstructed(pqxx::connection &c, float xx, float yy)
@@ -368,6 +434,24 @@ void printCityMap (CityMapChar cmap)
 	}
 }
 
+unsigned short getSignalQuality(unsigned short distance, bool lineOfSight)
+{
+	if(lineOfSight)
+	{
+		if(distance<70) return 5;
+		if(distance<115) return 4;
+		if(distance<135) return 3;
+		if(distance<155) return 2;
+	}
+	else
+	{
+		if(distance<58) return 5;
+		if(distance<65) return 4;
+		if(distance<105) return 3;
+		if(distance<130) return 2;
+	}
+	return 0; 	// no signal
+}
 
 /* Code examples and debug
  */

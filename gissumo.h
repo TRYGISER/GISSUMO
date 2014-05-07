@@ -49,8 +49,14 @@ using namespace boost::program_options;
  */
 #define METERSTODEGREES 0.000010261
 
+// Max range of an RSU, in meters
+#define MAXRANGE 155
+
 /* Functions
    --------- */
+
+// Returns geographic coordinates of a point given its GID.
+void GIS_getPointCoords(pqxx::connection &c, unsigned short gid, float &xgeo, float &ygeo);
 
 // Returns the GIDs of all points in a given range of a given point.
 vector<unsigned short> GIS_getPointsInRange(pqxx::connection &c, float xcenter, float ycenter, unsigned short range);
@@ -83,6 +89,8 @@ unsigned int deltaSeconds(float c1, float c2);
 class CityMapChar;
 void printCityMap (CityMapChar cmap);
 
+// Returns the signal quality on a 1-5 scale based on distance and Line of Sight.
+unsigned short getSignalQuality(unsigned short distance, bool lineOfSight);
 
 
 
