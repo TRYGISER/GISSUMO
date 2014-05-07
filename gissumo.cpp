@@ -124,6 +124,9 @@ int main(int argc, char *argv[])
 
 	vector<unsigned short> neighList;
 	neighList = GIS_getPointsInRange(conn,testRSU.xgeo,testRSU.ygeo,100);
+
+	unsigned short distTest = GIS_distanceToPointGID(conn,-8.6160498,41.165799,testRSU.gid);
+	cout << "Distance " << distTest << endl;
 	
 	cout << "Got # neighbors: " << neighList.size() << endl;
 	for(vector<unsigned short>::iterator iter=neighList.begin(); iter!=neighList.end(); iter++)
@@ -222,38 +225,32 @@ vector<unsigned short> GIS_getPointsInRange(pqxx::connection &c, float xcenter, 
 	return neighbors;
 }
 
-// TODO
 unsigned short GIS_distanceToPointGID(pqxx::connection &c, float xx, float yy, unsigned short targetgid)
 {
-	// first get the X and Y of target point
-	float xtarget=0, ytarget=0;
+	// first get the target point as WKT
 	pqxx::work txn1(c);
 	pqxx::result r1 = txn1.exec(
-			"SELECT ST_X(geom),ST_Y(geom) "
+			"SELECT ST_AsText(geom) "
 			"FROM edificios "
 			"WHERE gid=" + pqxx::to_string(targetgid)
 		);
 	txn1.commit();
 
+	std::string targetWKT(r1[0][0].as<string>());
+	cout << targetWKT << endl;
 
-//
-//
-//	pqxx::work txn(c);
-//
-//	pqxx::result r = txn.exec(
-//		"SELECT COUNT(id) "
-//		"FROM edificios "
-//		"WHERE ST_Intersects(geom, ST_GeomFromText('LINESTRING("
-//			+ pqxx::to_string(x1) + " "
-//			+ pqxx::to_string(y1) + ","
-//			+ pqxx::to_string(x2) + " "
-//			+ pqxx::to_string(y2) + ")',4326))"
-//	);
-//	txn.commit();
-//
-//	// TODO: need conversion to meters
-//	if(r[0][0].as<int>() > 0) return 1; else return 0;
-	
+
+	// now get the distance, convert to meters, and return
+	pqxx::work txn2(c);
+	pqxx::result r2 = txn2.exec(
+		"SELECT ST_Distance('POINT("
+			+ pqxx::to_string(xx) + " "
+			+ pqxx::to_string(yy) + ")', '"
+			+ targetWKT + "')"
+	);
+	txn2.commit();
+
+	return (unsigned short) (r2[0][0].as<float>()/METERSTODEGREES);
 }
 
 bool GIS_isLineOfSight (pqxx::connection &c, float x1, float y1, float x2, float y2)
