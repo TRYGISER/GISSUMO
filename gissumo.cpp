@@ -122,6 +122,14 @@ int main(int argc, char *argv[])
 	rsuList.push_back(testRSU);
 	vehicleLocations.map[testRSU.xcell][testRSU.ycell]='R';
 
+	vector<unsigned short> neighList;
+	neighList = GIS_getPointsInRange(conn,testRSU.xgeo,testRSU.ygeo,100);
+	
+	cout << "Got # neighbors: " << neighList.size() << endl;
+	for(vector<unsigned short>::iterator iter=neighList.begin(); iter!=neighList.end(); iter++)
+	{
+		cout << "\tNeighbor gid: " << *iter << '\n';
+	}
 
 	// Run through every time step
 	for(std::vector<Timestep>::iterator
@@ -147,7 +155,7 @@ int main(int argc, char *argv[])
 			unsigned short xcell=0, ycell=0;
 			determineCellFromWGS84 (iterVeh->xgeo, iterVeh->ygeo, xcell, ycell);
 
-
+			// TODO: update the positions of each vehicle in GIS and create new vehicles as needed
 
 
 			if(m_printVehicleMap)	vehicleLocations.map[xcell][ycell]='o';	// tag the vehicle citymap
@@ -190,6 +198,63 @@ int main(int argc, char *argv[])
 
 /* * */
 
+vector<unsigned short> GIS_getPointsInRange(pqxx::connection &c, float xcenter, float ycenter, unsigned short range)
+{
+	float wgs84range = range*METERSTODEGREES;
+	
+	pqxx::work txn(c);
+	pqxx::result r = txn.exec(
+		"SELECT gid "
+		"FROM edificios "
+		"WHERE ST_DWithin(geom,ST_GeomFromText('POINT("
+			+ pqxx::to_string(xcenter) + " "
+			+ pqxx::to_string(ycenter) + ")',4326)"
+			+ "," + pqxx::to_string(wgs84range) + ")"
+			+ " and feattyp='2222'"
+	);
+	txn.commit();
+	
+	vector<unsigned short> neighbors;
+
+	for(pqxx::result::iterator iter=r.begin(); iter != r.end(); iter++)
+		neighbors.push_back(iter[0].as<unsigned short>());
+
+	return neighbors;
+}
+
+// TODO
+unsigned short GIS_distanceToPointGID(pqxx::connection &c, float xx, float yy, unsigned short targetgid)
+{
+	// first get the X and Y of target point
+	float xtarget=0, ytarget=0;
+	pqxx::work txn1(c);
+	pqxx::result r1 = txn1.exec(
+			"SELECT ST_X(geom),ST_Y(geom) "
+			"FROM edificios "
+			"WHERE gid=" + pqxx::to_string(targetgid)
+		);
+	txn1.commit();
+
+
+//
+//
+//	pqxx::work txn(c);
+//
+//	pqxx::result r = txn.exec(
+//		"SELECT COUNT(id) "
+//		"FROM edificios "
+//		"WHERE ST_Intersects(geom, ST_GeomFromText('LINESTRING("
+//			+ pqxx::to_string(x1) + " "
+//			+ pqxx::to_string(y1) + ","
+//			+ pqxx::to_string(x2) + " "
+//			+ pqxx::to_string(y2) + ")',4326))"
+//	);
+//	txn.commit();
+//
+//	// TODO: need conversion to meters
+//	if(r[0][0].as<int>() > 0) return 1; else return 0;
+	
+}
 
 bool GIS_isLineOfSight (pqxx::connection &c, float x1, float y1, float x2, float y2)
 {
@@ -214,7 +279,7 @@ bool GIS_isPointObstructed(pqxx::connection &c, float xx, float yy)
 	pqxx::work txn(c);
 
 	pqxx::result r = txn.exec(
-		"SELECT COUNT(id) "
+		"SELECT COUNT(gid) "
 		"FROM edificios "
 		"WHERE ST_Intersects(geom, ST_GeomFromText('POINT("
 			+ pqxx::to_string(xx) + " "

@@ -41,10 +41,21 @@ using namespace boost::program_options;
 #define CITYHEIGHT 41	// yy
 #define CITYWIDTH 60	// xx
 
-
+/* At our location: 1" latitude: 30.89m; 1" longitude: 23.25m.
+ * Ideally we would be using SRID 27492 which would give us equal axis, but that would require
+ * converting the WGS84 coordinates from SUMO, which is nontrivial.
+ * We're defining the conversion between meters and degrees as: 1/(3600*(30.89+23.25)/2)
+ */
+#define METERSTODEGREES 0.000010261
 
 /* Functions
    --------- */
+
+// Returns the GIDs of all points in a given range of a given point.
+vector<unsigned short> GIS_getPointsInRange(pqxx::connection &c, float xcenter, float ycenter, unsigned short range);
+
+// Returns the distance from a set of coordinates to a given point by GID.
+unsigned short GIS_distanceToPointGID(pqxx::connection &c, float xx, float yy, unsigned short targetgid);
 
 // Returns true if the path between (x1,y1) and (x2,y2) is obstructed, false otherwise.
 bool GIS_isLineOfSight(pqxx::connection &c, float x1, float y1, float x2, float y2);
