@@ -104,7 +104,7 @@ int main(int argc, char *argv[])
 
 	// setup vectors to keep the list of RSUs and their status
 	std::vector<RSU> rsuList;			// vector to hold list of RSUs
-	CityMapChar vehicleLocations; 		// setup 2D map for vehicle locations
+	CityMapChar vehicleLocations; 		// 2D map for vehicle locations
 //	CityMapNum globalCoverage;
 
 	// TEST: add an active RSU
@@ -113,26 +113,20 @@ int main(int argc, char *argv[])
 	testRSU.ygeo=41.164798;
 	testRSU.xgeo=-8.616050;
 	testRSU.active=true;
+	// check to see if the RSU is in a valid location
+	if(GIS_isPointObstructed(conn,testRSU.xgeo,testRSU.ygeo))
+		{ cerr << "ERROR: RSU is inside a building." << endl; return 1; }
 	// get cell coordinates from WGS84
 	determineCellFromWGS84(testRSU.xgeo,testRSU.ygeo,testRSU.xcell,testRSU.ycell);
 	// add RSU to GIS and get GIS unique id (gid)
 	testRSU.gid = GIS_addPoint(conn,testRSU.xgeo,testRSU.ygeo,testRSU.id);
-	cout << "added point got gid=" << testRSU.gid << endl;
-
+	// add RSU to list of RSUs
 	rsuList.push_back(testRSU);
-	vehicleLocations.map[testRSU.xcell][testRSU.ycell]='R';
 
-	vector<unsigned short> neighList;
-	neighList = GIS_getPointsInRange(conn,testRSU.xgeo,testRSU.ygeo,100);
-
-	unsigned short distTest = GIS_distanceToPointGID(conn,-8.6160498,41.165799,testRSU.gid);
-	cout << "Distance " << distTest << endl;
-	
-	cout << "Got # neighbors: " << neighList.size() << endl;
-	for(vector<unsigned short>::iterator iter=neighList.begin(); iter!=neighList.end(); iter++)
-	{
-		cout << "\tNeighbor gid: " << *iter << '\n';
-	}
+//	vector<unsigned short> neighList = GIS_getPointsInRange(conn,testRSU.xgeo,testRSU.ygeo,100);
+//	unsigned short distTest = GIS_distanceToPointGID(conn,-8.6160498,41.165799,testRSU.gid);
+//	for(vector<unsigned short>::iterator iter=neighList.begin(); iter!=neighList.end(); iter++)
+//		cout << "\tNeighbor gid: " << *iter << '\n';
 
 	// Run through every time step
 	for(std::vector<Timestep>::iterator
@@ -171,11 +165,14 @@ int main(int argc, char *argv[])
 
 		if(m_printVehicleMap)	// --print-vehicle-map
 		{
+			for(vector<RSU>::iterator iter=rsuList.begin(); iter!=rsuList.end(); iter++)
+				if(iter->active)
+					vehicleLocations.map[iter->xcell][iter->ycell]='R';		// overlay RSUs on the map
 			printCityMap(vehicleLocations);			// print the vehicle map
-			for(short yy=0;yy<CITYWIDTH;yy++)		// clean map
-				for(short xx=0;xx<CITYHEIGHT;xx++)
-					if(vehicleLocations.map[yy][xx]=='o')
-						vehicleLocations.map[yy][xx]='.';
+			for(short xx=0;xx<CITYWIDTH;xx++)		// clean map
+				for(short yy=0;yy<CITYHEIGHT;yy++)
+					if(vehicleLocations.map[xx][yy]=='o' || vehicleLocations.map[xx][yy]=='R')
+						vehicleLocations.map[xx][yy]='.';
 		}
 	}	// end for(timestep)
 
@@ -274,7 +271,6 @@ bool GIS_isLineOfSight (pqxx::connection &c, float x1, float y1, float x2, float
 bool GIS_isPointObstructed(pqxx::connection &c, float xx, float yy)
 {
 	pqxx::work txn(c);
-
 	pqxx::result r = txn.exec(
 		"SELECT COUNT(gid) "
 		"FROM edificios "
