@@ -112,21 +112,9 @@ int main(int argc, char *argv[])
 	CityMapNum globalSignal;			// 2D map for global signal quality
 
 
-	// TEST: add an active RSU
-	RSU testRSU;
-	testRSU.id=10000;	// building IDs start on #17779, through #35140
-	testRSU.ygeo=41.164798;
-	testRSU.xgeo=-8.616050;
-	testRSU.active=true;
-	// check to see if the RSU is in a valid location
-	if(GIS_isPointObstructed(conn,testRSU.xgeo,testRSU.ygeo))
-		{ cerr << "ERROR: RSU is inside a building." << endl; return 1; }
-	// get cell coordinates from WGS84
-	determineCellFromWGS84(testRSU.xgeo,testRSU.ygeo,testRSU.xcell,testRSU.ycell);
-	// add RSU to GIS and get GIS unique id (gid)
-	testRSU.gid = GIS_addPoint(conn,testRSU.xgeo,testRSU.ygeo,testRSU.id);
-	// add RSU to list of RSUs
-	rsuList.push_back(testRSU);
+	// Add an RSU
+	addNewRSU(conn, rsuList, 10000, -8.616050, 41.164798, true);
+	addNewRSU(conn, rsuList, 10001, -8.619287, 41.164966, true);
 
 //	vector<unsigned short> neighList = GIS_getPointsInRange(conn,testRSU.xgeo,testRSU.ygeo,100);
 //	unsigned short distTest = GIS_distanceToPointGID(conn,-8.6160498,41.165799,testRSU.gid);
@@ -144,7 +132,7 @@ int main(int argc, char *argv[])
 		/*
 		 * Beginning of each time step
 		 */
-		if(m_debug) cout << "Time step: " << iterTime->time << endl;
+		if(m_debug) cout << "\nDEBUG Timestep time=" << iterTime->time << '\n' << endl;
 
 		// run through each vehicle
 		for(std::vector<Vehicle>::iterator
@@ -156,10 +144,13 @@ int main(int argc, char *argv[])
 			 * Beginning of each vehicle
 			 */
 
+			if(m_debug) cout << "DEBUG Vehicle id=" << iterVeh->id << endl;
+
 			// 0 - Always needed: clone the vehicle and update its position in cells
 			Vehicle newVehicle = *iterVeh;						// copy vehicle from XML iterator
 			determineCellFromWGS84 (newVehicle.xgeo, newVehicle.ygeo,
 					newVehicle.xcell, newVehicle.ycell);		// determine vehicle location in cells
+			if(m_debug) cout << "DEBUG Vehicle id=" << iterVeh->id << " new xcell=" << newVehicle.xcell << " new ycell=" << newVehicle.ycell << endl;
 			if(m_printVehicleMap)
 				vehicleLocations.map[newVehicle.xcell][newVehicle.ycell]='o';	// tag the vehicle citymap
 
@@ -175,11 +166,14 @@ int main(int argc, char *argv[])
 				// 2a - New vehicle. Add it to GIS, get GID, add to our local record.
 				newVehicle.gid = GIS_addPoint(conn,newVehicle.xgeo,newVehicle.ygeo,newVehicle.id);
 				vehiclesOnGIS.push_back(newVehicle);
+				if(m_debug) cout << "DEBUG Vehicle id=" << iterVeh->id << " is new, added to GIS with gid=" << newVehicle.gid << endl;
 			}
 			else
 			{
 				// 2b - Existing vehicle: update its position on GIS via GID.
-				GIS_updatePoint(conn,newVehicle.xgeo,newVehicle.ygeo,newVehicle.gid);
+				GIS_updatePoint(conn,newVehicle.xgeo,newVehicle.ygeo,iterVehicleOnGIS->gid);
+				if(m_debug) cout << "DEBUG Vehicle id=" << iterVeh->id << " exists, gid=" << iterVehicleOnGIS->gid << " update xgeo=" << newVehicle.xgeo << " ygeo=" << newVehicle.ygeo << endl;
+
 			}
 
 			// 3 - Mark vehicles missing from this timestep as 'parked'.
@@ -233,8 +227,8 @@ int main(int argc, char *argv[])
 					if(m_debug) cout << "DEBUG\t neighbor gid=" << *neighbor << " signal " << signalneigh << '\n';
 
 					// update RSU coverage map
-					short xrelative = 5 + xcellneigh - iterRSU->xcell;
-					short yrelative = 5 + ycellneigh - iterRSU->ycell;
+					short xrelative = PARKEDCELLRANGE + xcellneigh - iterRSU->xcell;
+					short yrelative = PARKEDCELLRANGE + ycellneigh - iterRSU->ycell;
 					iterRSU->coverage[xrelative][yrelative]=signalneigh;
 					if(m_debug) cout << "DEBUG\t neighbor gid=" << *neighbor << " on RSU map at xcell=" << xrelative << " ycell=" << yrelative << '\n';
 
@@ -252,16 +246,17 @@ int main(int argc, char *argv[])
 		// Wrap up.
 		if(m_printSignalMap && m_printVehicleMap)
 		{
-			// overlay RSUs on the map
-			for(vector<RSU>::iterator iter=rsuList.begin(); iter!=rsuList.end(); iter++)
-				if(iter->active)
-					vehicleLocations.map[iter->xcell][iter->ycell]='R';
 			// Apply signal map to vehicle map
 			for(short xx=0;xx<CITYWIDTH;xx++)
 				for(short yy=0;yy<CITYHEIGHT;yy++)
 					if(globalSignal.map[xx][yy])
 						vehicleLocations.map[xx][yy]=boost::lexical_cast<char>(globalSignal.map[xx][yy]);
+			// overlay RSUs on the map
+			for(vector<RSU>::iterator iter=rsuList.begin(); iter!=rsuList.end(); iter++)
+				if(iter->active)
+					vehicleLocations.map[iter->xcell][iter->ycell]='R';
 			// print the vehicle map
+			cout << "Timestep: " << iterTime->time << '\n';
 			printCityMap(vehicleLocations);
 			// clean map
 			for(short xx=0;xx<CITYWIDTH;xx++)
@@ -498,31 +493,17 @@ unsigned short getSignalQuality(unsigned short distance, bool lineOfSight)
 
 void applyCoverageToCityMap (RSU rsu, CityMapNum &city)
 {
-	for(short xx=0; xx<11; xx++)
-		for(short yy=0; yy<11; yy++)
+	for(short xx=0; xx<PARKEDCELLCOVERAGE; xx++)
+		for(short yy=0; yy<PARKEDCELLCOVERAGE; yy++)
 		{
-			short mapX=xx+rsu.xcell-5;
-			short mapY=yy+rsu.ycell-5;
+			short mapX=xx+rsu.xcell-PARKEDCELLRANGE;
+			short mapY=yy+rsu.ycell-PARKEDCELLRANGE;
 
 			// 'upgrade' coverage in a given cell if this RSU can cover it better
-			if(rsu.coverage[yy][xx] > city.map[mapY][mapX])
-				city.map[mapY][mapX] = rsu.coverage[yy][xx];
+			if(rsu.coverage[xx][yy] > city.map[mapX][mapY])
+				city.map[mapX][mapY] = rsu.coverage[xx][yy];
 		}
 }
-
-// TODO: needs revision, copied over from urbanParkedRSUs
-//void applyCountToCityMap (ParkedCar car, CityMap* city)
-//{
-//	for(short xx=0; xx<11; xx++)
-//		for(short yy=0; yy<11; yy++)
-//		{
-//			short mapX=xx+car.x-5;
-//			short mapY=yy+car.y-5;
-//
-//			if(car.coverage[yy][xx])
-//			city->map[mapY][mapX]++;	// bump number of cells covering the area
-//		}
-//}
 
 void printLocalCoverage(array< array<unsigned short,PARKEDCELLCOVERAGE>,PARKEDCELLCOVERAGE > coverage)
 {
@@ -532,6 +513,24 @@ void printLocalCoverage(array< array<unsigned short,PARKEDCELLCOVERAGE>,PARKEDCE
 			cout << coverage[yy][xx] << ' ';
 		cout << '\n';
 	}
+}
+
+void addNewRSU(pqxx::connection &conn, std::vector<RSU> &rsuList, unsigned short id, float xgeo, float ygeo, bool active)
+{
+	RSU testRSU;
+	testRSU.id=id;	// building IDs start on #17779, through #35140
+	testRSU.xgeo=xgeo;
+	testRSU.ygeo=ygeo;
+	testRSU.active=active;
+	// check to see if the RSU is in a valid location
+	if(GIS_isPointObstructed(conn,testRSU.xgeo,testRSU.ygeo))
+		{ cerr << "ERROR: RSU is inside a building." << endl; exit(1); }
+	// get cell coordinates from WGS84
+	determineCellFromWGS84(testRSU.xgeo,testRSU.ygeo,testRSU.xcell,testRSU.ycell);
+	// add RSU to GIS and get GIS unique id (gid)
+	testRSU.gid = GIS_addPoint(conn,testRSU.xgeo,testRSU.ygeo,testRSU.id);
+	// add RSU to list of RSUs
+	rsuList.push_back(testRSU);
 }
 
 /* Code examples and debug

@@ -37,6 +37,7 @@ using namespace boost::program_options;
 
 // This is the coverage map size, in cells, of an RSU (e.g. '11' means 5 cell radius, RSU at center cell)
 #define PARKEDCELLCOVERAGE 11
+#define PARKEDCELLRANGE 5
 
 // The size of the city map in cells
 // 6 cell margins were added (thus, +12 cells on each bearing)
@@ -46,11 +47,11 @@ using namespace boost::program_options;
 /* At our location: 1" latitude: 30.89m; 1" longitude: 23.25m.
  * Ideally we would be using SRID 27492 which would give us equal axis, but that would require
  * converting the WGS84 coordinates from SUMO, which is nontrivial.
- * We're defining the conversion between meters and degrees as: 1/(3600*(30.89+23.25)/2)
+ * We're defining the conversion between meters and degrees as: 1/(3600*30.89)
  */
-#define METERSTODEGREES 0.000010261
+#define METERSTODEGREES 0.0000089925
 
-// Max range of an RSU, in meters
+// Max range of an RSU, in meters. 5 cells: 154.45m (5/0.0000089925*3600)
 #define MAXRANGE 155
 
 /* Functions
@@ -94,15 +95,15 @@ void printCityMap (CityMapNum cmap);
 // Returns the signal quality on a 1-5 scale based on distance and Line of Sight.
 unsigned short getSignalQuality(unsigned short distance, bool lineOfSight);
 
-// Applies the coverage map of an RSU to a global city map
+// Applies the coverage map of an RSU to a global city map.
 class RSU; class CityMapNum;
 void applyCoverageToCityMap(RSU rsu, CityMapNum &city);
 
-//
-//void applyCountToCityMap (ParkedCar car, CityMap* city)
-
 // Prints ASCII of a local coverage map.
 void printLocalCoverage(array< array<unsigned short,PARKEDCELLCOVERAGE>,PARKEDCELLCOVERAGE > coverage);
+
+// Adds an RSU to the database and GIS.
+void addNewRSU(pqxx::connection &conn, std::vector<RSU> &rsuList, unsigned short id, float xgeo, float ygeo, bool active);
 
 
 /* Classes and Structs
