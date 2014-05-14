@@ -254,7 +254,6 @@ int main(int argc, char *argv[])
 				for(short yy=0;yy<CITYHEIGHT;yy++)
 					if(vehicleLocations.map[xx][yy]!=' ')
 						roadCells++;
-			if(m_debug) cout << "DEBUG Road Cell Count " << roadCells << endl;
 
 			// count the number of covered cells
 			unsigned short roadCellsCovered = 0;
@@ -262,7 +261,6 @@ int main(int argc, char *argv[])
 				for(short yy=0;yy<CITYHEIGHT;yy++)
 					if(globalSignal.map[xx][yy]!=0)
 						roadCellsCovered++;
-			if(m_debug) cout << "DEBUG Covered Cell Count " << roadCellsCovered << endl;
 
 			// determine the mean coverage of all valid cells
 			unsigned short roadCellsSignalSum = 0;
@@ -273,7 +271,6 @@ int main(int argc, char *argv[])
 						roadCellsSignalSum+=globalSignal.map[xx][yy];
 			roadCellsMeanSignal = (float)roadCellsSignalSum/(float)roadCells;
 			if(m_debug) cout << "DEBUG Road Cell Signal Sum " << roadCellsSignalSum << endl;
-			if(m_debug) cout << "DEBUG Mean Cell Coverage " << roadCellsMeanSignal << endl;
 
 			cout << "STATS"
 					<< " cells " << roadCells
