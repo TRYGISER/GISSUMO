@@ -16,6 +16,7 @@ int main(int argc, char *argv[])
 	// Defaults
 	bool m_printVehicleMap = false;
 	bool m_printSignalMap = false;
+	bool m_printStatistics = false;
 	bool m_validVehicle = false;
 	bool m_debug = false;
 
@@ -24,6 +25,7 @@ int main(int argc, char *argv[])
 	cliOptDesc.add_options()
 		("print-vehicle-map", "prints an ASCII map of vehicle positions")
 		("print-signal-map", "prints an ASCII map of signal quality")
+		("print-statistics", "outputs coverage metrics")
 		("check-valid-vehicles", "counts number of vehicles in the clear")
 	    ("debug", "enable debug mode (very verbose)")
 	    ("help", "give this help list")
@@ -34,10 +36,13 @@ int main(int argc, char *argv[])
 	store(parse_command_line(argc, argv, cliOptDesc), varMap);
 	notify(varMap);
 
+	if(argc==1) { cout << cliOptDesc; return 1; }
+
 	// Process options
 	if (varMap.count("debug")) 					m_debug=true;
 	if (varMap.count("print-vehicle-map")) 		m_printVehicleMap=true;
 	if (varMap.count("print-signal-map")) 		m_printSignalMap=true;
+	if (varMap.count("print-statistics")) 		m_printStatistics=true;
 	if (varMap.count("check-valid-vehicles"))	m_validVehicle=true;
 	if (varMap.count("help")) 					{ cout << cliOptDesc; return 1; }
 
@@ -151,7 +156,7 @@ int main(int argc, char *argv[])
 			determineCellFromWGS84 (newVehicle.xgeo, newVehicle.ygeo,
 					newVehicle.xcell, newVehicle.ycell);		// determine vehicle location in cells
 			if(m_debug) cout << "DEBUG Vehicle id=" << iterVeh->id << " new xcell=" << newVehicle.xcell << " new ycell=" << newVehicle.ycell << endl;
-			if(m_printVehicleMap)
+			if(m_printVehicleMap || m_printStatistics)
 				vehicleLocations.map[newVehicle.xcell][newVehicle.ycell]='o';	// tag the vehicle citymap
 
 			// 1 - See if the vehicle is new.
@@ -241,6 +246,42 @@ int main(int argc, char *argv[])
 		}	// end for(RSUs)
 
 
+		if(m_printStatistics)
+		{
+			// count the number of 'road' cells
+			unsigned short roadCells = 0;
+			for(short xx=0;xx<CITYWIDTH;xx++)
+				for(short yy=0;yy<CITYHEIGHT;yy++)
+					if(vehicleLocations.map[xx][yy]!=' ')
+						roadCells++;
+			if(m_debug) cout << "DEBUG Road Cell Count " << roadCells << endl;
+
+			// count the number of covered cells
+			unsigned short roadCellsCovered = 0;
+			for(short xx=0;xx<CITYWIDTH;xx++)
+				for(short yy=0;yy<CITYHEIGHT;yy++)
+					if(globalSignal.map[xx][yy]!=0)
+						roadCellsCovered++;
+			if(m_debug) cout << "DEBUG Covered Cell Count " << roadCellsCovered << endl;
+
+			// determine the mean coverage of all valid cells
+			unsigned short roadCellsSignalSum = 0;
+			float roadCellsMeanSignal = 0;
+			for(short xx=0;xx<CITYWIDTH;xx++)
+				for(short yy=0;yy<CITYHEIGHT;yy++)
+					if(globalSignal.map[xx][yy]!=0)
+						roadCellsSignalSum+=globalSignal.map[xx][yy];
+			roadCellsMeanSignal = (float)roadCellsSignalSum/(float)roadCells;
+			if(m_debug) cout << "DEBUG Road Cell Signal Sum " << roadCellsSignalSum << endl;
+			if(m_debug) cout << "DEBUG Mean Cell Coverage " << roadCellsMeanSignal << endl;
+
+			cout << "STATS"
+					<< " cells " << roadCells
+					<< " cellsCovered " << roadCellsCovered
+					<< " cellsMeanSignal " << roadCellsMeanSignal
+					<< " cellsCoveredMeanSignal " << ( (float)roadCellsSignalSum/(float)roadCellsCovered )
+					<< endl;
+		}
 
 
 		// Wrap up.
