@@ -10,7 +10,7 @@ EXECUTABLE=gissumo
 OBJECTS=$(SOURCES:.cpp=.o)
 
 INCLUDEDIRS=-I/usr/local/include
-EXTRALIBS=-lpqxx -lpq -lboost_program_options
+EXTRALIBS=-lpqxx -lpq -lboost_program_options -lboost_thread
 
 
 all: $(SOURCES) $(EXECUTABLE)

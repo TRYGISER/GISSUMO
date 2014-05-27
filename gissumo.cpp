@@ -19,6 +19,7 @@ int main(int argc, char *argv[])
 	bool m_printStatistics = false;
 	bool m_validVehicle = false;
 	bool m_debug = false;
+	unsigned short m_pause = 0;
 
 	// List of command line options
 	options_description cliOptDesc("Options");
@@ -27,6 +28,7 @@ int main(int argc, char *argv[])
 		("print-signal-map", "prints an ASCII map of signal quality")
 		("print-statistics", "outputs coverage metrics")
 		("check-valid-vehicles", "counts number of vehicles in the clear")
+		("pause", boost::program_options::value<unsigned short>(), "pauses for N milliseconds after every timestep")
 	    ("debug", "enable debug mode (very verbose)")
 	    ("help", "give this help list")
 	;
@@ -44,6 +46,7 @@ int main(int argc, char *argv[])
 	if (varMap.count("print-signal-map")) 		m_printSignalMap=true;
 	if (varMap.count("print-statistics")) 		m_printStatistics=true;
 	if (varMap.count("check-valid-vehicles"))	m_validVehicle=true;
+	if (varMap.count("pause"))					m_pause=varMap["pause"].as<unsigned short>();
 	if (varMap.count("help")) 					{ cout << cliOptDesc; return 1; }
 
 
@@ -319,6 +322,8 @@ int main(int argc, char *argv[])
 							vehicleLocations.map[xx][yy]='.';
 			}
 		}
+		if(m_pause)
+			{ cout << flush; this_thread::sleep( posix_time::milliseconds(m_pause) ); }
 	}	// end for(timestep)
 
 

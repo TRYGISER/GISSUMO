@@ -9,6 +9,7 @@
 
 #include <pqxx/pqxx>
 #include <boost/foreach.hpp>
+#include <boost/thread/thread.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/xml_parser.hpp>
 #include <boost/program_options.hpp>
