@@ -178,8 +178,13 @@ int main(int argc, char *argv[])
 			}
 			else
 			{
-				// 2b - Existing vehicle: update its position on GIS via GID.
+				// 2b - Existing vehicle: update its position on GIS via GID, update our local copy too.
 				GIS_updatePoint(conn,newVehicle.xgeo,newVehicle.ygeo,iterVehicleOnGIS->gid);
+				iterVehicleOnGIS->xcell = newVehicle.xcell;
+				iterVehicleOnGIS->ycell = newVehicle.ycell;
+				iterVehicleOnGIS->xgeo = newVehicle.xgeo;
+				iterVehicleOnGIS->ygeo = newVehicle.ygeo;
+				iterVehicleOnGIS->speed = newVehicle.speed;
 				if(m_debug) cout << "DEBUG Vehicle id=" << iterVeh->id << " exists, gid=" << iterVehicleOnGIS->gid << " update xgeo=" << newVehicle.xgeo << " ygeo=" << newVehicle.ygeo << endl;
 
 			}
@@ -340,6 +345,7 @@ int main(int argc, char *argv[])
 
 
 	// Clear all POINT entities from the database from past simulations.
+	// Uncomment this to leave the GIS database in a clean state after the simulation.
 //	GIS_clearAllPoints(conn);
 
 	return 0;
@@ -556,6 +562,21 @@ void printLocalCoverage(array< array<unsigned short,PARKEDCELLCOVERAGE>,PARKEDCE
 			cout << coverage[yy][xx] << ' ';
 		cout << '\n';
 	}
+}
+
+void printVehicleDetails(Vehicle veh)
+{
+	cout << "DEBUG Vehicle"
+			<< "\n\t id " << veh.id
+			<< " gid " << veh.gid
+			<< "\n\t parked " << (veh.parked?"true":"false")
+			<< "\n\t xcell " << veh.xcell
+			<< " ycell " << veh.ycell
+			<< "\n\t xgeo " << veh.xgeo
+			<< " ygeo " << veh.ygeo
+			<< "\n\t speed " << veh.speed
+			<< " packets " << veh.p_buffer.size()
+			<< '\n';
 }
 
 void addNewRSU(pqxx::connection &conn, std::vector<RSU> &rsuList, unsigned short id, float xgeo, float ygeo, bool active)

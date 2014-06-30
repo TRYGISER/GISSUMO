@@ -103,6 +103,10 @@ void applyCoverageToCityMap(RSU rsu, CityMapNum &city);
 // Prints ASCII of a local coverage map.
 void printLocalCoverage(array< array<unsigned short,PARKEDCELLCOVERAGE>,PARKEDCELLCOVERAGE > coverage);
 
+// Prints all details of a vehicle.
+struct Vehicle;
+void printVehicleDetails(Vehicle veh);
+
 // Adds an RSU to the database and GIS.
 void addNewRSU(pqxx::connection &conn, std::vector<RSU> &rsuList, unsigned short id, float xgeo, float ygeo, bool active);
 
@@ -161,6 +165,12 @@ public:
 	}
 };
 
+struct Packet
+{
+	unsigned short m_src;
+	unsigned short m_id;
+	float m_timestamp;
+};
 
 struct Vehicle
 {
@@ -174,6 +184,7 @@ struct Vehicle
 	float ygeo=0;
 
 	float speed = 0;
+	list<Packet> p_buffer;	// packet storage
 };
 
 struct Timestep
@@ -181,6 +192,8 @@ struct Timestep
 	float time = 0;
 	std::vector<Vehicle> vehiclelist;
 };
+
+
 
 
 
