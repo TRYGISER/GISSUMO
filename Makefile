@@ -5,7 +5,7 @@ CC=g++
 CXXFLAGS=-c -O2 -std=c++11 -Wall --pedantic
 LDFLAGS=-O2
 
-SOURCES=gissumo.cpp
+SOURCES=gissumo.cpp uvcast.cpp
 EXECUTABLE=gissumo
 OBJECTS=$(SOURCES:.cpp=.o)
 
