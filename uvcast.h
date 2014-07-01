@@ -3,6 +3,7 @@
 
 #include "gissumo.h"
 #include <list>
+#include <cmath>
 
 using namespace std;
 
