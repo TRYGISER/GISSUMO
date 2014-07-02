@@ -13,8 +13,11 @@ list<float> UVCAST_computeAngles(Vehicle src, Vehicle self, list<Vehicle> neighb
 	{
 		double neighAngle = atan2(self.ygeo-src.ygeo, self.xgeo-src.xgeo) * 180 / PI;
 
-	}
+		float deltaAngle = srcAngle-neighAngle;
+		if(deltaAngle<0) deltaAngle+=360;
 
+		angles.push_back(deltaAngle);
+	}
 
 	return angles;
 }
