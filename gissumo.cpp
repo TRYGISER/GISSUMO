@@ -117,8 +117,8 @@ int main(int argc, char *argv[])
 	 */
 
 	// setup vectors and maps
-	std::vector<RSU> rsuList;			// vector to hold list of RSUs
-	std::vector<Vehicle> vehiclesOnGIS;	// vehicles we've processed from SUMO to GIS
+	vector<RSU> rsuList;			// vector to hold list of RSUs
+	vector<Vehicle> vehiclesOnGIS;	// vehicles we've processed from SUMO to GIS
 	CityMapChar vehicleLocations; 		// 2D map for vehicle locations
 	CityMapNum globalSignal;			// 2D map for global signal quality
 
@@ -190,6 +190,8 @@ int main(int argc, char *argv[])
 				iterVehicleOnGIS->speed = newVehicle.speed;
 				if(m_debug) cout << "DEBUG Vehicle id=" << iterVeh->id << " exists, gid=" << iterVehicleOnGIS->gid << " update xgeo=" << newVehicle.xgeo << " ygeo=" << newVehicle.ygeo << endl;
 
+				// test: get neighbors
+				getVehiclesInRange(conn, vehiclesOnGIS, *iterVehicleOnGIS);
 			}
 
 			// 3 - Mark vehicles missing from this timestep as 'parked'.
@@ -600,18 +602,52 @@ void addNewRSU(pqxx::connection &conn, std::vector<RSU> &rsuList, unsigned short
 	rsuList.push_back(testRSU);
 }
 
-vector<Vehicle> getNeighborsInRange(Vehicle src)
+vector<Vehicle> getVehiclesInRange(pqxx::connection &conn, vector<Vehicle> vehiclesOnGIS, Vehicle src)
 {
-	// step 1: ask GIS for neighbors
-	// step 2: match gid to Vehicle objects
-	// step 3: get distance to neighbors, obstruction status
-	// step 4: trim based on signal strength (<2 drop)
-
+	/* Step 1: ask GIS for neighbors
+	 * Step 2: match gid to Vehicle objects
+	 * Step 3: get distance to neighbors, obstruction status
+	 * Step 4: trim based on signal strength (<2 drop)
+	 * Note that vehiclesOnGIS does not have RSUs.
+	 */
 	vector<Vehicle> neighbors;
 	vector<unsigned short> GISneighbors;
 
-//	vector<unsigned short> GIS_getPointsInRange(pqxx::connection &c, float xcenter, float ycenter, unsigned short range);
+	// Step 1
+	GISneighbors = GIS_getPointsInRange(conn,src.xgeo,src.ygeo,MAXRANGE);
+	GISneighbors.erase(std::remove(GISneighbors.begin(), GISneighbors.end(), src.gid), GISneighbors.end() ); // drop ourselves from the list
 
+	if(m_debug)
+	{
+		cout << "DEBUG getVehiclesInRange srcID " << src.id << " srcGID " << src.gid << " neighbor gid ";
+		for(vector<unsigned short>::iterator iter=GISneighbors.begin(); iter != GISneighbors.end(); iter++)
+			cout << *iter << ' ';
+		cout << endl;
+	}
+
+	// Step 2
+	for(vector<unsigned short>::iterator iter=GISneighbors.begin(); iter != GISneighbors.end(); iter++)
+	{
+		// find the vehicle by *iter
+		vector<Vehicle>::iterator iterVehicle = find_if(
+				vehiclesOnGIS.begin(),
+				vehiclesOnGIS.end(),
+				boost::bind(&Vehicle::gid, _1) == *iter	// match Vehicle GID with GID from GIS
+				);
+
+		if(iterVehicle != vehiclesOnGIS.end())	// we can get to end() if the neighbor GID was an RSU
+		{
+			// Step 3
+			// get the distance, obstruction, and signal to src
+			unsigned short distance = GIS_distanceToPointGID(conn,src.xgeo,src.ygeo,iterVehicle->gid);
+			bool isLineOfSight = GIS_isLineOfSight(conn,src.xgeo,src.ygeo,iterVehicle->xgeo,iterVehicle->ygeo);
+			unsigned short signal = getSignalQuality(distance, isLineOfSight);
+
+			// Step 4
+			if(signal<2)
+				neighbors.push_back(*iterVehicle);
+		}
+	}
 
 	return neighbors;
 }

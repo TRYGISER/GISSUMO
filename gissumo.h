@@ -110,8 +110,8 @@ void printVehicleDetails(Vehicle veh);
 // Adds an RSU to the database and GIS.
 void addNewRSU(pqxx::connection &conn, std::vector<RSU> &rsuList, unsigned short id, float xgeo, float ygeo, bool active);
 
-// Returns a list of nearby vehicles that we can communicate with.
-vector<Vehicle> getNeighborsInRange(Vehicle src);
+// Returns a list of nearby vehicles (not RSUs) that we can communicate with.
+vector<Vehicle> getVehiclesInRange(pqxx::connection &conn, vector<Vehicle> vehiclesOnGIS, Vehicle src);
 
 /* Classes and Structs
    ------------------- */
