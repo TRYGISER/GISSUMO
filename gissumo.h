@@ -67,7 +67,7 @@ vector<unsigned short> GIS_getPointsInRange(pqxx::connection &c, float xcenter, 
 // Returns the distance from a set of coordinates to a given point by GID.
 unsigned short GIS_distanceToPointGID(pqxx::connection &c, float xx, float yy, unsigned short targetgid);
 
-// Returns true if the path between (x1,y1) and (x2,y2) is obstructed, false otherwise.
+// Returns false if the path between (x1,y1) and (x2,y2) is obstructed, true otherwise.
 bool GIS_isLineOfSight(pqxx::connection &c, float x1, float y1, float x2, float y2);
 
 // Returns true if the point at (xx,yy) is intersecting with something.
@@ -110,6 +110,8 @@ void printVehicleDetails(Vehicle veh);
 // Adds an RSU to the database and GIS.
 void addNewRSU(pqxx::connection &conn, std::vector<RSU> &rsuList, unsigned short id, float xgeo, float ygeo, bool active);
 
+// Returns a list of nearby vehicles that we can communicate with.
+list<Vehicle> getNeighborsInRange(Vehicle src);
 
 /* Classes and Structs
    ------------------- */

@@ -8,6 +8,9 @@ const ptree& empty_ptree(){
     return t;
 }
 
+// Can extern the debug variable.
+bool m_debug = false;
+
 int main(int argc, char *argv[])
 {
 	/* Process command-line options
@@ -19,7 +22,6 @@ int main(int argc, char *argv[])
 	bool m_printSignalMap = false;
 	bool m_printStatistics = false;
 	bool m_validVehicle = false;
-	bool m_debug = false;
 	unsigned short m_pause = 0;
 
 	// List of command line options
