@@ -10,6 +10,7 @@ using namespace std;
 #define PI 3.14159265
 
 list<float> UVCAST_computeAngles(Vehicle src, Vehicle self, list<Vehicle> neighbors);
+bool UVCAST_determineSCFtask(list<float> angles);
 
 
 
