@@ -600,6 +600,22 @@ void addNewRSU(pqxx::connection &conn, std::vector<RSU> &rsuList, unsigned short
 	rsuList.push_back(testRSU);
 }
 
+vector<Vehicle> getNeighborsInRange(Vehicle src)
+{
+	// step 1: ask GIS for neighbors
+	// step 2: match gid to Vehicle objects
+	// step 3: get distance to neighbors, obstruction status
+	// step 4: trim based on signal strength (<2 drop)
+
+	vector<Vehicle> neighbors;
+	vector<unsigned short> GISneighbors;
+
+//	vector<unsigned short> GIS_getPointsInRange(pqxx::connection &c, float xcenter, float ycenter, unsigned short range);
+
+
+	return neighbors;
+}
+
 /* Code examples and debug
  */
 

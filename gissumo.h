@@ -111,7 +111,7 @@ void printVehicleDetails(Vehicle veh);
 void addNewRSU(pqxx::connection &conn, std::vector<RSU> &rsuList, unsigned short id, float xgeo, float ygeo, bool active);
 
 // Returns a list of nearby vehicles that we can communicate with.
-list<Vehicle> getNeighborsInRange(Vehicle src);
+vector<Vehicle> getNeighborsInRange(Vehicle src);
 
 /* Classes and Structs
    ------------------- */
@@ -186,7 +186,7 @@ struct Vehicle
 	float ygeo=0;
 
 	float speed = 0;
-	list<Packet> p_buffer;	// packet storage
+	vector<Packet> p_buffer;	// packet storage
 };
 
 struct Timestep

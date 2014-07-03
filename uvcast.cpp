@@ -1,13 +1,13 @@
 #include "uvcast.h"
 
-list<float> UVCAST_computeAngles(Vehicle src, Vehicle self, list<Vehicle> neighbors)
+vector<float> UVCAST_computeAngles(Vehicle src, Vehicle self, vector<Vehicle> neighbors)
 {
-	list<float> angles;
+	vector<float> angles;
 
 	double srcAngle = atan2(self.ygeo-src.ygeo, self.xgeo-src.xgeo) * 180 / PI;
 
 	// go through our neighbors
-	for(list<Vehicle>::iterator iter=neighbors.begin(); iter!=neighbors.end(); iter++)
+	for(vector<Vehicle>::iterator iter=neighbors.begin(); iter!=neighbors.end(); iter++)
 	{
 		double neighAngle = atan2(self.ygeo-src.ygeo, self.xgeo-src.xgeo) * 180 / PI;
 
@@ -25,7 +25,7 @@ list<float> UVCAST_computeAngles(Vehicle src, Vehicle self, list<Vehicle> neighb
 				<< " neighbors=" << neighbors.size()
 				<< '\n';
 		cout << "\tangles: ";
-		for(list<float>::iterator iterAngles=angles.begin(); iterAngles!=angles.end(); iterAngles++)
+		for(vector<float>::iterator iterAngles=angles.begin(); iterAngles!=angles.end(); iterAngles++)
 			cout << *iterAngles << ' ';
 		cout << endl;
 	}
@@ -35,11 +35,11 @@ list<float> UVCAST_computeAngles(Vehicle src, Vehicle self, list<Vehicle> neighb
 }
 
 
-bool UVCAST_determineSCFtask(list<float> angles)
+bool UVCAST_determineSCFtask(vector<float> angles)
 {
 	float min=0, max=0;
 
-	for(list<float>::iterator iter=angles.begin(); iter!=angles.end(); iter++)
+	for(vector<float>::iterator iter=angles.begin(); iter!=angles.end(); iter++)
 	{
 		if(*iter<min) min=*iter;
 		if(*iter>max) max=*iter;

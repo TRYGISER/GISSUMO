@@ -2,7 +2,7 @@
 #define UVCAST_H_
 
 #include "gissumo.h"
-#include <list>
+#include <vector>
 #include <cmath>
 
 using namespace std;
@@ -13,8 +13,8 @@ using namespace std;
 extern bool m_debug;
 
 
-list<float> UVCAST_computeAngles(Vehicle src, Vehicle self, list<Vehicle> neighbors);
-bool UVCAST_determineSCFtask(list<float> angles);
+vector<float> UVCAST_computeAngles(Vehicle src, Vehicle self, vector<Vehicle> neighbors);
+bool UVCAST_determineSCFtask(vector<float> angles);
 
 
 
