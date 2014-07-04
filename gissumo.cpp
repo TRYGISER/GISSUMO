@@ -1,6 +1,7 @@
 #include "gissumo.h"
-#include "uvcast.h"
 #include "gis.h"
+#include "network.h"
+#include "uvcast.h"
 
 #define XML_PATH "./fcdoutput.xml"
 
@@ -135,14 +136,14 @@ int main(int argc, char *argv[])
 
 
 
-	// Run through every time step
+	// Run through every time step on the FCD XML file
 	for(std::vector<Timestep>::iterator
 			iterTime = fcd_output.begin();
 			iterTime != fcd_output.end();
 			iterTime++ )
 	{
 		/*
-		 * Beginning of each time step
+		 * Beginning of each FCD XML time step
 		 */
 		if(m_debug) cout << "\nDEBUG Timestep time=" << iterTime->time << '\n' << endl;
 
@@ -153,7 +154,7 @@ int main(int argc, char *argv[])
 				iterVeh++)
 		{
 			/*
-			 * Beginning of each vehicle
+			 * Beginning of each vehicle on the FCD trace (already converted to Vehicle entities)
 			 */
 
 			if(m_debug) cout << "DEBUG Vehicle id=" << iterVeh->id << endl;
@@ -198,12 +199,19 @@ int main(int argc, char *argv[])
 
 		}	// end for(vehicle)
 
-		/*
-		 * End of each time step
+
+		/* Vehicles are now in the GIS map as POINTs.
+		 * All new vehicles added to GIS, all existing vehicles' positions updated on GIS.
+		 * The first level of fcd_output is a time entity, the second level is a vehiclelist
+		 * of Vehicle entities from XML.
+		 * vehiclesOnGIS is our local database of updated vehicles.
+		 * rsuList has our RSUs.
 		 */
 
-		// Vehicles are now in the GIS map as POINTs.
-		// Go through each RSU and update its coverage map.
+
+		/* Go through each RSU and update its coverage map.
+		 * This is computed from the vehicles the RSU sees, and their signal strength.
+		 */
 		for(vector<RSU>::iterator iterRSU = rsuList.begin();
 			iterRSU != rsuList.end();
 			iterRSU++)
@@ -256,6 +264,16 @@ int main(int argc, char *argv[])
 
 		}	// end for(RSUs)
 
+		/* Network layer.
+		 * Act on vehiclesOnGIS and rsuList, and disseminate packets.
+		 * Activate UVCAST and designate vehicles as SCF
+		 * TODO: Create a list of events and process events based on the current time step.
+		 */
+		processNetwork(conn,iterTime->time,vehiclesOnGIS,rsuList);
+
+		/* Compute and print statistics.
+		 *
+		 */
 
 		if(m_printStatistics)
 		{
@@ -332,6 +350,11 @@ int main(int argc, char *argv[])
 		}
 		if(m_pause)
 			{ cout << flush; this_thread::sleep( posix_time::milliseconds(m_pause) ); }
+
+		/*
+		 * End of each time step
+		 */
+
 	}	// end for(timestep)
 
 
