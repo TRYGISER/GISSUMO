@@ -2,6 +2,7 @@
 
 // Global statistics
 unsigned int s_packetCount = 0;
+vector<unsigned short> s_packetPropagationTime;
 
 void processNetwork(pqxx::connection &conn, float timestep, vector<Vehicle> &vehiclesOnGIS, vector<RSU> &rsuList)
 {
@@ -22,13 +23,13 @@ void processNetwork(pqxx::connection &conn, float timestep, vector<Vehicle> &veh
 		/* Vehicles assigned the SCF duty rebroadcast their message
 		 */
 		if(iterVehicle->scf)
-			rebroadcastPacket(conn, vehiclesOnGIS, rsuList, *iterVehicle);
+			rebroadcastPacket(conn, timestep, vehiclesOnGIS, rsuList, *iterVehicle);
 
 	}
 
 }
 
-void rebroadcastPacket(pqxx::connection &conn, vector<Vehicle> &vehiclesOnGIS, vector<RSU> &rsuList, Vehicle &veh)
+void rebroadcastPacket(pqxx::connection &conn, float timestep, vector<Vehicle> &vehiclesOnGIS, vector<RSU> &rsuList, Vehicle &veh)
 {
 	// Get our neighbor list. This routine already returns vehicles where communication is possible (signal>=2)
 	vector<Vehicle> neighbors = getVehiclesInRange(conn, vehiclesOnGIS, veh);
@@ -39,5 +40,8 @@ void rebroadcastPacket(pqxx::connection &conn, vector<Vehicle> &vehiclesOnGIS, v
 			{
 				iter->packet = veh.packet;
 				s_packetCount++;
+				s_packetPropagationTime.resize((int)timestep+1);
+				s_packetPropagationTime[(int)timestep]++;
 			}
 }
+
