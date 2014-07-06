@@ -2,6 +2,7 @@
 #define GIS_H_
 
 #include "gissumo.h"
+extern bool m_debug;
 
 // Returns geographic coordinates of a point given its GID.
 void GIS_getPointCoords(pqxx::connection &c, unsigned short gid, float &xgeo, float &ygeo);
@@ -26,5 +27,12 @@ void GIS_updatePoint(pqxx::connection &c, float xx, float yy, unsigned short GID
 
 // Removes all POINTs from the database (feattyp 2222).
 void GIS_clearAllPoints(pqxx::connection &c);
+
+// Adds an RSU to the database and GIS.
+void addNewRSU(pqxx::connection &conn, std::vector<RSU> &rsuList, unsigned short id, float xgeo, float ygeo, bool active);
+
+// Returns a list of nearby vehicles (not RSUs) that we can communicate with.
+vector<Vehicle> getVehiclesInRange(pqxx::connection &conn, vector<Vehicle> vehiclesOnGIS, Vehicle src);
+
 
 #endif /* GIS_H_ */

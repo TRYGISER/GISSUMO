@@ -134,3 +134,73 @@ void GIS_clearAllPoints(pqxx::connection &c)
 	txn.exec( "DELETE FROM edificios WHERE feattyp='2222'");
 	txn.commit();
 }
+
+
+void addNewRSU(pqxx::connection &conn, std::vector<RSU> &rsuList, unsigned short id, float xgeo, float ygeo, bool active)
+{
+	RSU testRSU;
+	testRSU.id=id;	// building IDs start on #17779, through #35140
+	testRSU.xgeo=xgeo;
+	testRSU.ygeo=ygeo;
+	testRSU.active=active;
+	// check to see if the RSU is in a valid location
+	if(GIS_isPointObstructed(conn,testRSU.xgeo,testRSU.ygeo))
+		{ cerr << "ERROR: RSU is inside a building." << endl; exit(1); }
+	// get cell coordinates from WGS84
+	determineCellFromWGS84(testRSU.xgeo,testRSU.ygeo,testRSU.xcell,testRSU.ycell);
+	// add RSU to GIS and get GIS unique id (gid)
+	testRSU.gid = GIS_addPoint(conn,testRSU.xgeo,testRSU.ygeo,testRSU.id);
+	// add RSU to list of RSUs
+	rsuList.push_back(testRSU);
+}
+
+
+vector<Vehicle> getVehiclesInRange(pqxx::connection &conn, vector<Vehicle> vehiclesOnGIS, Vehicle src)
+{
+	/* Step 1: ask GIS for neighbors
+	 * Step 2: match gid to Vehicle objects
+	 * Step 3: get distance to neighbors, obstruction status
+	 * Step 4: trim based on signal strength (<2 drop)
+	 * Note that vehiclesOnGIS does not have RSUs.
+	 */
+	vector<Vehicle> neighbors;
+	vector<unsigned short> GISneighbors;
+
+	// Step 1
+	GISneighbors = GIS_getPointsInRange(conn,src.xgeo,src.ygeo,MAXRANGE);
+	GISneighbors.erase(std::remove(GISneighbors.begin(), GISneighbors.end(), src.gid), GISneighbors.end() ); // drop ourselves from the list
+
+	if(m_debug)
+	{
+		cout << "DEBUG getVehiclesInRange srcID " << src.id << " srcGID " << src.gid << " neighbor gid ";
+		for(vector<unsigned short>::iterator iter=GISneighbors.begin(); iter != GISneighbors.end(); iter++)
+			cout << *iter << ' ';
+		cout << endl;
+	}
+
+	// Step 2
+	for(vector<unsigned short>::iterator iter=GISneighbors.begin(); iter != GISneighbors.end(); iter++)
+	{
+		// find the vehicle by *iter
+		vector<Vehicle>::iterator iterVehicle = find_if(
+				vehiclesOnGIS.begin(),
+				vehiclesOnGIS.end(),
+				boost::bind(&Vehicle::gid, _1) == *iter	// match Vehicle GID with GID from GIS
+				);
+
+		if(iterVehicle != vehiclesOnGIS.end())	// we can get to end() if the neighbor GID was an RSU
+		{
+			// Step 3
+			// get the distance, obstruction, and signal to src
+			unsigned short distance = GIS_distanceToPointGID(conn,src.xgeo,src.ygeo,iterVehicle->gid);
+			bool isLineOfSight = GIS_isLineOfSight(conn,src.xgeo,src.ygeo,iterVehicle->xgeo,iterVehicle->ygeo);
+			unsigned short signal = getSignalQuality(distance, isLineOfSight);
+
+			// Step 4
+			if(signal<2)
+				neighbors.push_back(*iterVehicle);
+		}
+	}
+
+	return neighbors;
+}

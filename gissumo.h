@@ -83,12 +83,6 @@ void printLocalCoverage(array< array<unsigned short,PARKEDCELLCOVERAGE>,PARKEDCE
 struct Vehicle;
 void printVehicleDetails(Vehicle veh);
 
-// Adds an RSU to the database and GIS.
-void addNewRSU(pqxx::connection &conn, std::vector<RSU> &rsuList, unsigned short id, float xgeo, float ygeo, bool active);
-
-// Returns a list of nearby vehicles (not RSUs) that we can communicate with.
-vector<Vehicle> getVehiclesInRange(pqxx::connection &conn, vector<Vehicle> vehiclesOnGIS, Vehicle src);
-
 /* Classes and Structs
    ------------------- */
 
@@ -145,9 +139,9 @@ public:
 
 struct Packet
 {
-	unsigned short m_src;
-	unsigned short m_id;
-	float m_timestamp;
+	unsigned short m_src=0;
+	unsigned short m_id=0;
+	float m_timestamp=0;
 };
 
 struct Vehicle
@@ -158,6 +152,7 @@ struct Vehicle
 	bool rsu=false;			// Vehicle acting as an RSU
 	bool uplink=false;		// Vehicle has an uplink for fast message dissemination
 	bool active=false;		// Status, various uses
+	bool scf=false;			// Store-carry-forward task assigned
 
 	unsigned short xcell=0;	// x,y position in a cell map
 	unsigned short ycell=0;
@@ -165,7 +160,8 @@ struct Vehicle
 	float ygeo=0;
 
 	float speed = 0;
-	vector<Packet> p_buffer;	// packet storage
+	Packet packet;		// store a single packet for now
+//	vector<Packet> p_buffer;	// packet storage
 };
 
 struct Timestep
