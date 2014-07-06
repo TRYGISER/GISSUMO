@@ -125,7 +125,7 @@ public:
 	// this initialization takes ID and geographic coordinates, and completes the cell coordinates automatically
 	RSU(unsigned short iid, float xx, float yy)
 	{
-		id=iid;
+		id=iid; gid=0;
 		active = false;
 		xcell=0; ycell=0;
 		xgeo=xx; ygeo=yy;
@@ -155,6 +155,9 @@ struct Vehicle
 	unsigned short id=0;	// SUMO identifier
 	unsigned short gid=0;	// GIS identifier
 	bool parked=false;		// Parked status
+	bool rsu=false;			// Vehicle acting as an RSU
+	bool uplink=false;		// Vehicle has an uplink for fast message dissemination
+	bool active=false;		// Status, various uses
 
 	unsigned short xcell=0;	// x,y position in a cell map
 	unsigned short ycell=0;

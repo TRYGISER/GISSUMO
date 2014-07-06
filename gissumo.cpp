@@ -147,6 +147,15 @@ int main(int argc, char *argv[])
 		 */
 		if(m_debug) cout << "\nDEBUG Timestep time=" << iterTime->time << '\n' << endl;
 
+		/* Mark all vehicles on vehiclesOnGIS as active=false
+		 * The next step remarks the ones on the road (XML) as active=true
+		 */
+		for(std::vector<Vehicle>::iterator
+				iter=vehiclesOnGIS.begin();
+				iter!=vehiclesOnGIS.end();
+				iter++)
+			iter->active=false;
+
 		// run through each vehicle
 		for(std::vector<Vehicle>::iterator
 				iterVeh=iterTime->vehiclelist.begin();
@@ -178,23 +187,33 @@ int main(int argc, char *argv[])
 			{
 				// 2a - New vehicle. Add it to GIS, get GID, add to our local record.
 				newVehicle.gid = GIS_addPoint(conn,newVehicle.xgeo,newVehicle.ygeo,newVehicle.id);
+				// Mark as active
+				newVehicle.active=true;
+				// Add to our local record
 				vehiclesOnGIS.push_back(newVehicle);
+				// Debug
 				if(m_debug) cout << "DEBUG Vehicle id=" << iterVeh->id << " is new, added to GIS with gid=" << newVehicle.gid << endl;
 			}
 			else
 			{
-				// 2b - Existing vehicle: update its position on GIS via GID, update our local copy too.
+				// 2b - Existing vehicle: update its position on GIS via GID
 				GIS_updatePoint(conn,newVehicle.xgeo,newVehicle.ygeo,iterVehicleOnGIS->gid);
+				// Update our local copy
 				iterVehicleOnGIS->xcell = newVehicle.xcell;
 				iterVehicleOnGIS->ycell = newVehicle.ycell;
 				iterVehicleOnGIS->xgeo = newVehicle.xgeo;
 				iterVehicleOnGIS->ygeo = newVehicle.ygeo;
 				iterVehicleOnGIS->speed = newVehicle.speed;
+				// Mark as active
+				iterVehicleOnGIS->active = true;
+				// Debug
 				if(m_debug) cout << "DEBUG Vehicle id=" << iterVeh->id << " exists, gid=" << iterVehicleOnGIS->gid << " update xgeo=" << newVehicle.xgeo << " ygeo=" << newVehicle.ygeo << endl;
 			}
 
-			// 3 - Mark vehicles missing from this timestep as 'parked'.
-			// TODO
+			/* 3 - Mark vehicles missing from this timestep as 'parked'.
+			 * No longer needed. Vehicles that are active=false are no longer a part of the FCD XML output, and thus disappeared from the simulation.
+			 * We can decide what to do with inactive cars here. Parked/RSU/Uplink.
+			 */
 
 
 		}	// end for(vehicle)
