@@ -4,7 +4,7 @@
 unsigned int s_packetCount = 0;
 map<float,int> s_packetPropagationTime;
 
-void processNetwork(pqxx::connection &conn, float timestep, vector<Vehicle> &vehiclesOnGIS, vector<RSU> &rsuList)
+void processNetwork(pqxx::connection &conn, float timestep, list<Vehicle> &vehiclesOnGIS, vector<RSU> &rsuList)
 {
 
 	/* UVCAST approach:
@@ -12,7 +12,7 @@ void processNetwork(pqxx::connection &conn, float timestep, vector<Vehicle> &veh
 	 * UVCAST considers that vehicles advertise which emergency messages they already received in their
 	 * hello packets, so if a destination neighbor already has our message, don't 'transmit' (no statistics).
 	 */
-	for(vector<Vehicle>::iterator iterVehicle=vehiclesOnGIS.begin(); iterVehicle!=vehiclesOnGIS.end(); iterVehicle++)
+	for(list<Vehicle>::iterator iterVehicle=vehiclesOnGIS.begin(); iterVehicle!=vehiclesOnGIS.end(); iterVehicle++)
 	{
 		// We need to differentiate new broadcasts (source isn't an SCF) and run the gift-wrapping algorithm, from
 		// messages received from an SCF (don't rebroadcast).
@@ -28,13 +28,13 @@ void processNetwork(pqxx::connection &conn, float timestep, vector<Vehicle> &veh
 
 }
 
-void rebroadcastPacket(pqxx::connection &conn, float timestep, vector<Vehicle> &vehiclesOnGIS, vector<RSU> &rsuList, Vehicle &veh)
+void rebroadcastPacket(pqxx::connection &conn, float timestep, list<Vehicle> &vehiclesOnGIS, vector<RSU> &rsuList, Vehicle &veh)
 {
 	// Get our neighbor list. This routine already returns vehicles where communication is possible (signal>=2)
-	vector<vector<Vehicle>::iterator> neighbors = getVehiclesInRange(conn, vehiclesOnGIS, veh);
+	vector<Vehicle*> neighbors = getVehiclesInRange(conn, vehiclesOnGIS, veh);
 
 	// Go through each neighbor. If the packet isn't the same as ours, send our packet to them.
-	for(vector<vector<Vehicle>::iterator>::iterator iter=neighbors.begin(); iter!=neighbors.end(); iter++)
+	for(vector<Vehicle*>::iterator iter=neighbors.begin(); iter!=neighbors.end(); iter++)
 		if( (*iter)->packet.m_id != veh.packet.m_id )
 			{
 				(*iter)->packet.m_id = veh.packet.m_id;
@@ -51,10 +51,10 @@ void rebroadcastPacket(pqxx::connection &conn, float timestep, vector<Vehicle> &
 			}
 }
 
-void simulateAccident(pqxx::connection &conn, float timestep, vector<Vehicle> &vehiclesOnGIS, vector<RSU> &rsuList, Vehicle &accidentSource)
+void simulateAccident(pqxx::connection &conn, float timestep, list<Vehicle> &vehiclesOnGIS, vector<RSU> &rsuList, Vehicle &accidentSource)
 {
 	// An accident begins at accidentSource. We get our neighbors.
-	vector<vector<Vehicle>::iterator> neighbors = getVehiclesInRange(conn, vehiclesOnGIS, accidentSource);
+	vector<Vehicle*> neighbors = getVehiclesInRange(conn, vehiclesOnGIS, accidentSource);
 
 	// No neighbors: not what we want to simulate, exit.
 	assert(neighbors.size()>0);
@@ -75,7 +75,7 @@ void simulateAccident(pqxx::connection &conn, float timestep, vector<Vehicle> &v
 	initialBroadcast(conn, timestep, vehiclesOnGIS, rsuList, accidentSource, accidentSource);
 }
 
-void initialBroadcast(pqxx::connection &conn, float timestep, vector<Vehicle> &vehiclesOnGIS, vector<RSU> &rsuList, Vehicle &srcVeh, Vehicle &packetSrcVeh)
+void initialBroadcast(pqxx::connection &conn, float timestep, list<Vehicle> &vehiclesOnGIS, vector<RSU> &rsuList, Vehicle &srcVeh, Vehicle &packetSrcVeh)
 {
 	/* This is a recursive function.
 	 * Make sure that the vehicle on the first call has a packet.
@@ -87,10 +87,10 @@ void initialBroadcast(pqxx::connection &conn, float timestep, vector<Vehicle> &v
 				<< endl;
 
 	// We get our neighbors.
-	vector<vector<Vehicle>::iterator> neighbors = getVehiclesInRange(conn, vehiclesOnGIS, srcVeh);
+	vector<Vehicle*> neighbors = getVehiclesInRange(conn, vehiclesOnGIS, srcVeh);
 
 	// We broadcast the packet. Those who don't have the packet already get initialBroadcast() called on them too.
-	for(vector<vector<Vehicle>::iterator>::iterator iter=neighbors.begin(); iter!=neighbors.end(); iter++)
+	for(vector<Vehicle*>::iterator iter=neighbors.begin(); iter!=neighbors.end(); iter++)
 	{
 		cout << "MASS DEBUG"
 				<< "\n\titer id " << (*iter)->id

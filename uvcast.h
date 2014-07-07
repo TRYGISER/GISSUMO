@@ -6,7 +6,7 @@
 extern bool m_debug;
 
 // Returns the list of angles to each neighbor as required by the gift-wrapping algorithm.
-vector<float> UVCAST_computeAngles(Vehicle src, Vehicle self, vector<vector<Vehicle>::iterator> neighbors);
+vector<float> UVCAST_computeAngles(Vehicle src, Vehicle self, vector<Vehicle*> neighbors);
 
 // Given a list of angles, returns the result of the gift-wrapping algorithm.
 bool UVCAST_determineSCFtask(vector<float> angles);

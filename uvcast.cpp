@@ -1,13 +1,13 @@
 #include "uvcast.h"
 
-vector<float> UVCAST_computeAngles(Vehicle src, Vehicle self, vector<vector<Vehicle>::iterator> neighbors)
+vector<float> UVCAST_computeAngles(Vehicle src, Vehicle self, vector<Vehicle*> neighbors)
 {
 	vector<float> angles;
 
 	double srcAngle = atan2(self.ygeo-src.ygeo, self.xgeo-src.xgeo) * 180 / PI;
 
 	// go through our neighbors
-	for(vector<vector<Vehicle>::iterator>::iterator iter=neighbors.begin(); iter!=neighbors.end(); iter++)
+	for(vector<Vehicle*>::iterator iter=neighbors.begin(); iter!=neighbors.end(); iter++)
 	{
 		double neighAngle = atan2( (*iter)->ygeo-src.ygeo, (*iter)->xgeo-src.xgeo) * 180 / PI;
 

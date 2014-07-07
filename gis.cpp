@@ -155,7 +155,7 @@ void addNewRSU(pqxx::connection &conn, std::vector<RSU> &rsuList, unsigned short
 }
 
 
-vector<vector<Vehicle>::iterator> getVehiclesInRange(pqxx::connection &conn, vector<Vehicle> vehiclesOnGIS, Vehicle src)
+vector<Vehicle*> getVehiclesInRange(pqxx::connection &conn, list<Vehicle> vehiclesOnGIS, Vehicle src)
 {
 	/* Step 1: ask GIS for neighbors
 	 * Step 2: match gid to Vehicle objects
@@ -163,7 +163,7 @@ vector<vector<Vehicle>::iterator> getVehiclesInRange(pqxx::connection &conn, vec
 	 * Step 4: trim based on signal strength (<2 drop)
 	 * Note that vehiclesOnGIS does not have RSUs.
 	 */
-	vector<vector<Vehicle>::iterator> neighbors;
+	vector<Vehicle*> neighbors;
 	vector<unsigned short> GISneighbors;
 
 	// Step 1
@@ -182,7 +182,7 @@ vector<vector<Vehicle>::iterator> getVehiclesInRange(pqxx::connection &conn, vec
 	for(vector<unsigned short>::iterator iter=GISneighbors.begin(); iter != GISneighbors.end(); iter++)
 	{
 		// find the vehicle by *iter
-		vector<Vehicle>::iterator iterVehicle = find_if(
+		list<Vehicle>::iterator iterVehicle = find_if(
 				vehiclesOnGIS.begin(),
 				vehiclesOnGIS.end(),
 				boost::bind(&Vehicle::gid, _1) == *iter	// match Vehicle GID with GID from GIS
@@ -198,7 +198,7 @@ vector<vector<Vehicle>::iterator> getVehiclesInRange(pqxx::connection &conn, vec
 
 			// Step 4
 			if(signal<2)
-				neighbors.push_back( iterVehicle ); // an iterator is a pointer to an object
+				neighbors.push_back( &(*iterVehicle) ); // an iterator is a pointer to an object
 		}
 	}
 

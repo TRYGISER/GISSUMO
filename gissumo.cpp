@@ -120,7 +120,7 @@ int main(int argc, char *argv[])
 
 	// setup vectors and maps
 	vector<RSU> rsuList;			// vector to hold list of RSUs
-	vector<Vehicle> vehiclesOnGIS;	// vehicles we've processed from SUMO to GIS
+	list<Vehicle> vehiclesOnGIS;	// vehicles we've processed from SUMO to GIS
 	CityMapChar vehicleLocations; 		// 2D map for vehicle locations
 	CityMapNum globalSignal;			// 2D map for global signal quality
 
@@ -150,7 +150,7 @@ int main(int argc, char *argv[])
 		/* Mark all vehicles on vehiclesOnGIS as active=false
 		 * The next step remarks the ones on the road (XML) as active=true
 		 */
-		for(std::vector<Vehicle>::iterator
+		for(list<Vehicle>::iterator
 				iter=vehiclesOnGIS.begin();
 				iter!=vehiclesOnGIS.end();
 				iter++)
@@ -177,7 +177,7 @@ int main(int argc, char *argv[])
 				vehicleLocations.map[newVehicle.xcell][newVehicle.ycell]='o';	// tag the vehicle citymap
 
 			// 1 - See if the vehicle is new.
-			vector<Vehicle>::iterator iterVehicleOnGIS = find_if(
+			list<Vehicle>::iterator iterVehicleOnGIS = find_if(
 					vehiclesOnGIS.begin(),
 					vehiclesOnGIS.end(),
 					boost::bind(&Vehicle::id, _1) == iterVeh->id	// '_1' means "substitute with the first input argument"
@@ -231,7 +231,7 @@ int main(int argc, char *argv[])
 		if(m_printStatistics)
 		{
 			short countInactive=0, countActive=0;
-			for(std::vector<Vehicle>::iterator
+			for(list<Vehicle>::iterator
 					iter=vehiclesOnGIS.begin();
 					iter!=vehiclesOnGIS.end();
 					iter++)
