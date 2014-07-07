@@ -24,6 +24,7 @@ int main(int argc, char *argv[])
 	bool m_printSignalMap = false;
 	bool m_printStatistics = false;
 	bool m_validVehicle = false;
+	bool m_debugLocations = false;
 	unsigned short m_pause = 0;
 
 	// List of command line options
@@ -34,7 +35,8 @@ int main(int argc, char *argv[])
 		("print-statistics", "outputs coverage metrics")
 		("check-valid-vehicles", "counts number of vehicles in the clear")
 		("pause", boost::program_options::value<unsigned short>(), "pauses for N milliseconds after every timestep")
-	    ("debug", "enable debug mode (very verbose)")
+	    ("debug", "enable debug mode")
+	    ("debug-locations", "debug vehicle location updates")
 	    ("help", "give this help list")
 	;
 
@@ -47,6 +49,7 @@ int main(int argc, char *argv[])
 
 	// Process options
 	if (varMap.count("debug")) 					m_debug=true;
+	if (varMap.count("debug-locations")) 		m_debugLocations=true;
 	if (varMap.count("print-vehicle-map")) 		m_printVehicleMap=true;
 	if (varMap.count("print-signal-map")) 		m_printSignalMap=true;
 	if (varMap.count("print-statistics")) 		m_printStatistics=true;
@@ -145,7 +148,7 @@ int main(int argc, char *argv[])
 		/*
 		 * Beginning of each FCD XML time step
 		 */
-		if(m_debug) cout << "\nDEBUG Timestep time=" << iterTime->time << '\n' << endl;
+		if(m_debug) cout << "\nDEBUG Timestep time=" << iterTime->time << endl;
 
 		/* Mark all vehicles on vehiclesOnGIS as active=false
 		 * The next step remarks the ones on the road (XML) as active=true
@@ -166,13 +169,13 @@ int main(int argc, char *argv[])
 			 * Beginning of each vehicle on the FCD trace (already converted to Vehicle entities)
 			 */
 
-			if(m_debug) cout << "DEBUG Vehicle id=" << iterVeh->id << endl;
+			if(m_debugLocations) cout << "DEBUG Vehicle id=" << iterVeh->id << endl;
 
 			// 0 - Always needed: clone the vehicle and update its position in cells
 			Vehicle newVehicle = *iterVeh;						// copy vehicle from XML iterator
 			determineCellFromWGS84 (newVehicle.xgeo, newVehicle.ygeo,
 					newVehicle.xcell, newVehicle.ycell);		// determine vehicle location in cells
-			if(m_debug) cout << "DEBUG Vehicle id=" << iterVeh->id << " new xcell=" << newVehicle.xcell << " new ycell=" << newVehicle.ycell << endl;
+			if(m_debugLocations) cout << "DEBUG Vehicle id=" << iterVeh->id << " new xcell=" << newVehicle.xcell << " new ycell=" << newVehicle.ycell << endl;
 			if(m_printVehicleMap || m_printStatistics)
 				vehicleLocations.map[newVehicle.xcell][newVehicle.ycell]='o';	// tag the vehicle citymap
 
@@ -192,7 +195,7 @@ int main(int argc, char *argv[])
 				// Add to our local record
 				vehiclesOnGIS.push_back(newVehicle);
 				// Debug
-				if(m_debug) cout << "DEBUG Vehicle id=" << iterVeh->id << " is new, added to GIS with gid=" << newVehicle.gid << endl;
+				if(m_debugLocations) cout << "DEBUG Vehicle id=" << iterVeh->id << " is new, added to GIS with gid=" << newVehicle.gid << endl;
 			}
 			else
 			{
@@ -207,7 +210,7 @@ int main(int argc, char *argv[])
 				// Mark as active
 				iterVehicleOnGIS->active = true;
 				// Debug
-				if(m_debug) cout << "DEBUG Vehicle id=" << iterVeh->id << " exists, gid=" << iterVehicleOnGIS->gid << " update xgeo=" << newVehicle.xgeo << " ygeo=" << newVehicle.ygeo << endl;
+				if(m_debugLocations) cout << "DEBUG Vehicle id=" << iterVeh->id << " exists, gid=" << iterVehicleOnGIS->gid << " update xgeo=" << newVehicle.xgeo << " ygeo=" << newVehicle.ygeo << endl;
 
 				// TODO DELETEME
 				// Get a specific vehicle to act as the accident source
@@ -216,6 +219,7 @@ int main(int argc, char *argv[])
 					// vehicle id 60 at time 61 is the accident
 					cout << "ACCIDENT" << endl;
 					simulateAccident(conn, iterTime->time, vehiclesOnGIS, rsuList, *iterVehicleOnGIS);
+
 				}
 			}
 
@@ -511,11 +515,23 @@ void printVehicleDetails(Vehicle veh)
 			<< " ygeo " << veh.ygeo
 			<< "\n\t speed " << veh.speed
 //			<< " packets " << veh.p_buffer.size()
-			<< " packetID " << veh.packet.m_id
-			<< " packetSrc " << veh.packet.m_src
+			<< " packetID " << veh.packet.packetID
+			<< " packetSrc " << veh.packet.packetSrc
 			<< '\n';
 }
 
+void printListOfVehicles(list<Vehicle> &vehiclesOnGIS)
+{
+	cout << "DEBUG VehicleList"
+			<< "\n\tID\tGID\tpID\tSCF\n";
+	for(list<Vehicle>::iterator iterD=vehiclesOnGIS.begin(); iterD!=vehiclesOnGIS.end(); iterD++)
+		cout <<
+			'\t' << iterD->id <<
+			'\t' << iterD->gid <<
+			'\t' << iterD->packet.packetID <<
+			'\t' << iterD->scf
+			<< endl;
+}
 
 /* Code examples and debug
  */

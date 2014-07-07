@@ -32,6 +32,6 @@ void GIS_clearAllPoints(pqxx::connection &c);
 void addNewRSU(pqxx::connection &conn, std::vector<RSU> &rsuList, unsigned short id, float xgeo, float ygeo, bool active);
 
 // Returns a list of iterators that point to vehicles (not RSUs) that we can communicate with.
-vector<Vehicle*> getVehiclesInRange(pqxx::connection &conn, list<Vehicle> vehiclesOnGIS, Vehicle src);
+vector<Vehicle*> getVehiclesInRange(pqxx::connection &conn, list<Vehicle> &vehiclesOnGIS, const Vehicle src);
 
 #endif /* GIS_H_ */

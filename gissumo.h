@@ -86,6 +86,10 @@ void printLocalCoverage(array< array<unsigned short,PARKEDCELLCOVERAGE>,PARKEDCE
 struct Vehicle;
 void printVehicleDetails(Vehicle veh);
 
+// Prints the list<Vehicle> of vehicles.
+void printListOfVehicles(list<Vehicle> &vehiclesOnGIS);
+
+
 /* Classes and Structs
    ------------------- */
 
@@ -142,9 +146,9 @@ public:
 
 struct Packet
 {
-	unsigned short m_src=0;
-	unsigned short m_id=0;
-	float m_timestamp=0;
+	unsigned short packetSrc=0;
+	unsigned short packetID=0;
+	float packetTime=0;
 };
 
 struct Vehicle

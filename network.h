@@ -16,6 +16,6 @@ void rebroadcastPacket(pqxx::connection &conn, float timestep, list<Vehicle> &ve
 void simulateAccident(pqxx::connection &conn, float timestep, list<Vehicle> &vehiclesOnGIS, vector<RSU> &rsuList, Vehicle &accidentSource);
 
 // An initial broadcast is recursive, and will call itself for all vehicles that are part of a cluster.
-void initialBroadcast(pqxx::connection &conn, float timestep, list<Vehicle> &vehiclesOnGIS, vector<RSU> &rsuList, Vehicle &srcVeh, Vehicle &packetSrcVeh);
+void initialBroadcast(pqxx::connection &conn, float timestep, list<Vehicle> &vehiclesOnGIS, vector<RSU> &rsuList, Vehicle &selfVeh, Vehicle &srcVeh);
 
 #endif /* NETWORK_H_ */

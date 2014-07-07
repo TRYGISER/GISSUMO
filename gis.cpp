@@ -155,7 +155,7 @@ void addNewRSU(pqxx::connection &conn, std::vector<RSU> &rsuList, unsigned short
 }
 
 
-vector<Vehicle*> getVehiclesInRange(pqxx::connection &conn, list<Vehicle> vehiclesOnGIS, Vehicle src)
+vector<Vehicle*> getVehiclesInRange(pqxx::connection &conn, list<Vehicle> &vehiclesOnGIS, const Vehicle src)
 {
 	/* Step 1: ask GIS for neighbors
 	 * Step 2: match gid to Vehicle objects
@@ -170,13 +170,6 @@ vector<Vehicle*> getVehiclesInRange(pqxx::connection &conn, list<Vehicle> vehicl
 	GISneighbors = GIS_getPointsInRange(conn,src.xgeo,src.ygeo,MAXRANGE);
 	GISneighbors.erase(std::remove(GISneighbors.begin(), GISneighbors.end(), src.gid), GISneighbors.end() ); // drop ourselves from the list
 
-	if(m_debug)
-	{
-		cout << "DEBUG getVehiclesInRange srcID " << src.id << " srcGID " << src.gid << " neighbor gid ";
-		for(vector<unsigned short>::iterator iter=GISneighbors.begin(); iter != GISneighbors.end(); iter++)
-			cout << *iter << ' ';
-		cout << endl;
-	}
 
 	// Step 2
 	for(vector<unsigned short>::iterator iter=GISneighbors.begin(); iter != GISneighbors.end(); iter++)
@@ -197,9 +190,19 @@ vector<Vehicle*> getVehiclesInRange(pqxx::connection &conn, list<Vehicle> vehicl
 			unsigned short signal = getSignalQuality(distance, isLineOfSight);
 
 			// Step 4
-			if(signal<2)
-				neighbors.push_back( &(*iterVehicle) ); // an iterator is a pointer to an object
+			if(signal>=2)
+				neighbors.push_back( &(*iterVehicle) ); // an iterator is not a pointer to an object. Dereference and rereference.
 		}
+	}
+
+
+	if(m_debug)
+	{
+		cout << "DEBUG getVehiclesInRange valid neighbors " << neighbors.size() << '/' << GISneighbors.size()
+					<< ", neighbors of " << src.id << ": " ;
+		for(vector<Vehicle*>::iterator iter=neighbors.begin(); iter != neighbors.end(); iter++)
+			cout << (*iter)->id << ' ';
+		cout << endl;
 	}
 
 	return neighbors;
