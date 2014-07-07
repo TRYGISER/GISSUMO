@@ -208,6 +208,15 @@ int main(int argc, char *argv[])
 				iterVehicleOnGIS->active = true;
 				// Debug
 				if(m_debug) cout << "DEBUG Vehicle id=" << iterVeh->id << " exists, gid=" << iterVehicleOnGIS->gid << " update xgeo=" << newVehicle.xgeo << " ygeo=" << newVehicle.ygeo << endl;
+
+				// TODO DELETEME
+				// Get a specific vehicle to act as the accident source
+				if(iterTime->time==60 && iterVehicleOnGIS->id==59)
+				{
+					// vehicle id 60 at time 61 is the accident
+					cout << "ACCIDENT" << endl;
+					simulateAccident(conn, iterTime->time, vehiclesOnGIS, rsuList, *iterVehicleOnGIS);
+				}
 			}
 
 			/* 3 - Mark vehicles missing from this timestep as 'parked'.

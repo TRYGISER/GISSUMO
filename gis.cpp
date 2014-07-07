@@ -155,7 +155,7 @@ void addNewRSU(pqxx::connection &conn, std::vector<RSU> &rsuList, unsigned short
 }
 
 
-vector<Vehicle> getVehiclesInRange(pqxx::connection &conn, vector<Vehicle> vehiclesOnGIS, Vehicle src)
+vector<vector<Vehicle>::iterator> getVehiclesInRange(pqxx::connection &conn, vector<Vehicle> vehiclesOnGIS, Vehicle src)
 {
 	/* Step 1: ask GIS for neighbors
 	 * Step 2: match gid to Vehicle objects
@@ -163,7 +163,7 @@ vector<Vehicle> getVehiclesInRange(pqxx::connection &conn, vector<Vehicle> vehic
 	 * Step 4: trim based on signal strength (<2 drop)
 	 * Note that vehiclesOnGIS does not have RSUs.
 	 */
-	vector<Vehicle> neighbors;
+	vector<vector<Vehicle>::iterator> neighbors;
 	vector<unsigned short> GISneighbors;
 
 	// Step 1
@@ -198,7 +198,7 @@ vector<Vehicle> getVehiclesInRange(pqxx::connection &conn, vector<Vehicle> vehic
 
 			// Step 4
 			if(signal<2)
-				neighbors.push_back(*iterVehicle);
+				neighbors.push_back( iterVehicle ); // an iterator is a pointer to an object
 		}
 	}
 

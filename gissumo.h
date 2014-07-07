@@ -55,6 +55,9 @@ using namespace boost::program_options;
 // Max range of an RSU, in meters. 5 cells: 154.45m (5/0.0000089925*3600)
 #define MAXRANGE 155
 
+// Emergency message code
+#define EMERGENCYID 31337
+
 /* Functions
    --------- */
 
