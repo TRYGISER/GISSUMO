@@ -2,7 +2,7 @@
 
 // Global statistics
 unsigned int s_packetCount = 0;
-vector<unsigned short> s_packetPropagationTime;
+map<float,int> s_packetPropagationTime;
 
 void processNetwork(pqxx::connection &conn, float timestep, vector<Vehicle> &vehiclesOnGIS, vector<RSU> &rsuList)
 {
@@ -41,8 +41,7 @@ void rebroadcastPacket(pqxx::connection &conn, float timestep, vector<Vehicle> &
 				(*iter)->packet.m_src = veh.id;
 				(*iter)->packet.m_timestamp = timestep;
 				s_packetCount++;
-				s_packetPropagationTime.resize((int)timestep+1);
-				s_packetPropagationTime[(int)timestep]++;
+				s_packetPropagationTime[timestep]++;
 
 				if(m_debug)
 					cout << "DEBUG rebroadcastPacket"
@@ -109,8 +108,7 @@ void initialBroadcast(pqxx::connection &conn, float timestep, vector<Vehicle> &v
 			(*iter)->packet.m_src = srcVeh.id;
 			(*iter)->packet.m_timestamp = timestep;
 			s_packetCount++;
-			s_packetPropagationTime.resize((int)timestep+1);
-			s_packetPropagationTime[(int)timestep]++;
+			s_packetPropagationTime[timestep]++;
 
 			if(m_debug)
 				cout << "DEBUG initialBroadcast"

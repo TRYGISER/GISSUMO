@@ -1,6 +1,7 @@
 #ifndef NETWORK_H_
 #define NETWORK_H_
 
+#include <map>
 #include "gissumo.h"
 #include "gis.h"
 #include "uvcast.h"
