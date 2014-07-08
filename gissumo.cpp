@@ -12,6 +12,9 @@ const ptree& empty_ptree(){
 
 // Can extern the debug variable.
 bool m_debug = false;
+// From network
+extern map<float,int> s_packetPropagationTime;
+
 
 int main(int argc, char *argv[])
 {
@@ -404,6 +407,18 @@ int main(int argc, char *argv[])
 	}	// end for(timestep)
 
 
+	/* Print final count of packet propagation times.
+	 */
+	if(m_printStatistics)
+	{
+		cout << "STAT PacketPropagationTime"
+				<< "\nTime\tCount" << endl;
+		for(map<float,int>::iterator mapIter=s_packetPropagationTime.begin();
+				mapIter!=s_packetPropagationTime.end();
+				mapIter++)
+			cout << mapIter->first << '\t' << mapIter->second << '\n';
+
+	}
 
 	// DEBUG: go through every vehicle position and see if it's not inside a building.
 	if(m_validVehicle)
