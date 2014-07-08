@@ -11,7 +11,11 @@ vector<float> UVCAST_computeAngles(Vehicle src, Vehicle self, vector<Vehicle*> n
 	{
 		double neighAngle = atan2( (*iter)->ygeo-src.ygeo, (*iter)->xgeo-src.xgeo) * 180 / PI;
 
+//		cout << "UVCAST DEBUG" << " srcAngle " << srcAngle << " neighAngle " << neighAngle << endl;
+
 		float deltaAngle = srcAngle-neighAngle;
+		if(deltaAngle>180) deltaAngle = 360 - deltaAngle;
+		else if(deltaAngle<-180) deltaAngle = - 360 + deltaAngle;
 		assert( (deltaAngle <= 180) && (deltaAngle >= -180) );
 
 		angles.push_back(deltaAngle);
