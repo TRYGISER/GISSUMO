@@ -182,17 +182,18 @@ vector<Vehicle*> getVehiclesInRange(pqxx::connection &conn, list<Vehicle> &vehic
 				);
 
 		if(iterVehicle != vehiclesOnGIS.end())	// we can get to end() if the neighbor GID was an RSU
-		{
-			// Step 3
-			// get the distance, obstruction, and signal to src
-			unsigned short distance = GIS_distanceToPointGID(conn,src.xgeo,src.ygeo,iterVehicle->gid);
-			bool isLineOfSight = GIS_isLineOfSight(conn,src.xgeo,src.ygeo,iterVehicle->xgeo,iterVehicle->ygeo);
-			unsigned short signal = getSignalQuality(distance, isLineOfSight);
+			if(iterVehicle->active)	// we want active neighbors
+			{
+				// Step 3
+				// get the distance, obstruction, and signal to src
+				unsigned short distance = GIS_distanceToPointGID(conn,src.xgeo,src.ygeo,iterVehicle->gid);
+				bool isLineOfSight = GIS_isLineOfSight(conn,src.xgeo,src.ygeo,iterVehicle->xgeo,iterVehicle->ygeo);
+				unsigned short signal = getSignalQuality(distance, isLineOfSight);
 
-			// Step 4
-			if(signal>=2)
-				neighbors.push_back( &(*iterVehicle) ); // an iterator is not a pointer to an object. Dereference and rereference.
-		}
+				// Step 4
+				if(signal>=2)
+					neighbors.push_back( &(*iterVehicle) ); // an iterator is not a pointer to an object. Dereference and rereference.
+			}
 	}
 
 
@@ -231,7 +232,8 @@ vector<Vehicle*> getVehiclesNearPoint(pqxx::connection &conn, list<Vehicle> &veh
 				);
 
 		if(iterVehicle != vehiclesOnGIS.end())	// we can get to end() if the neighbor GID was an RSU
-			neighbors.push_back( &(*iterVehicle) ); // an iterator is not a pointer to an object. Dereference and rereference.
+			if(iterVehicle->active)	// we want active neighbors
+				neighbors.push_back( &(*iterVehicle) ); // an iterator is not a pointer to an object. Dereference and rereference.
 	}
 
 
