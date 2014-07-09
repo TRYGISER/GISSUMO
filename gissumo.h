@@ -36,6 +36,10 @@ using namespace boost::program_options;
 #define YREFERENCE 41.17056 	// 41°10′14.0″N
 #define XREFERENCE -8.62444		// 008°37′28.0″W
 
+// Map center coordinates
+#define YCENTER 41.163535
+#define XCENTER -8.617485
+
 // This is the coverage map size, in cells, of an RSU (e.g. '11' means 5 cell radius, RSU at center cell)
 #define PARKEDCELLCOVERAGE 11
 #define PARKEDCELLRANGE 5

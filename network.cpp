@@ -4,7 +4,7 @@
 unsigned int s_packetCount = 0;
 map<float,int> s_packetPropagationTime;
 
-void processNetwork(pqxx::connection &conn, float timestep, list<Vehicle> &vehiclesOnGIS, vector<RSU> &rsuList)
+void processNetwork(pqxx::connection &conn, float timestep, list<Vehicle> &vehiclesOnGIS, list<RSU> &rsuList)
 {
 	if(m_debug) cout << "DEBUG processNetwork" << " timestep " << timestep << endl;
 
@@ -29,7 +29,7 @@ void processNetwork(pqxx::connection &conn, float timestep, list<Vehicle> &vehic
 
 }
 
-void rebroadcastPacket(pqxx::connection &conn, float timestep, list<Vehicle> &vehiclesOnGIS, vector<RSU> &rsuList, Vehicle &veh)
+void rebroadcastPacket(pqxx::connection &conn, float timestep, list<Vehicle> &vehiclesOnGIS, list<RSU> &rsuList, Vehicle &veh)
 {
 	// Get our neighbor list. This routine already returns vehicles where communication is possible (signal>=2)
 	vector<Vehicle*> neighbors = getVehiclesInRange(conn, vehiclesOnGIS, veh);
@@ -52,7 +52,7 @@ void rebroadcastPacket(pqxx::connection &conn, float timestep, list<Vehicle> &ve
 			}
 }
 
-void simulateAccident(pqxx::connection &conn, float timestep, list<Vehicle> &vehiclesOnGIS, vector<RSU> &rsuList, Vehicle &accidentSource)
+void simulateAccident(pqxx::connection &conn, float timestep, list<Vehicle> &vehiclesOnGIS, list<RSU> &rsuList, Vehicle &accidentSource)
 {
 	if(m_debug)
 		cout << "DEBUG simulateAccident"
@@ -75,7 +75,7 @@ void simulateAccident(pqxx::connection &conn, float timestep, list<Vehicle> &veh
 	initialBroadcast(conn, timestep, vehiclesOnGIS, rsuList, accidentSource, accidentSource);
 }
 
-void initialBroadcast(pqxx::connection &conn, float timestep, list<Vehicle> &vehiclesOnGIS, vector<RSU> &rsuList, Vehicle &selfVeh, Vehicle &srcVeh)
+void initialBroadcast(pqxx::connection &conn, float timestep, list<Vehicle> &vehiclesOnGIS, list<RSU> &rsuList, Vehicle &selfVeh, Vehicle &srcVeh)
 {
 	/* This is a recursive function.
 	 * Make sure that the vehicle on the first call has a packet.

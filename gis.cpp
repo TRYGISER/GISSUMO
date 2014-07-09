@@ -136,7 +136,7 @@ void GIS_clearAllPoints(pqxx::connection &c)
 }
 
 
-void addNewRSU(pqxx::connection &conn, std::vector<RSU> &rsuList, unsigned short id, float xgeo, float ygeo, bool active)
+void addNewRSU(pqxx::connection &conn, std::list<RSU> &rsuList, unsigned short id, float xgeo, float ygeo, bool active)
 {
 	RSU testRSU;
 	testRSU.id=id;	// building IDs start on #17779, through #35140
@@ -200,6 +200,45 @@ vector<Vehicle*> getVehiclesInRange(pqxx::connection &conn, list<Vehicle> &vehic
 	{
 		cout << "DEBUG getVehiclesInRange valid neighbors " << neighbors.size() << '/' << GISneighbors.size()
 					<< ", neighbors of " << src.id << ": " ;
+		for(vector<Vehicle*>::iterator iter=neighbors.begin(); iter != neighbors.end(); iter++)
+			cout << (*iter)->id << ' ';
+		cout << endl;
+	}
+
+	return neighbors;
+}
+
+vector<Vehicle*> getVehiclesNearPoint(pqxx::connection &conn, list<Vehicle> &vehiclesOnGIS, const float xgeo, const float ygeo, const unsigned short range)
+{
+	/* Step 1: ask GIS for neighbors
+	 * Step 2: match gid to Vehicle objects
+	 * Note that vehiclesOnGIS does not have RSUs.
+	 */
+	vector<Vehicle*> neighbors;
+	vector<unsigned short> GISneighbors;
+
+	// Step 1
+	GISneighbors = GIS_getPointsInRange(conn,xgeo,ygeo,range);
+
+	// Step 2
+	for(vector<unsigned short>::iterator iter=GISneighbors.begin(); iter != GISneighbors.end(); iter++)
+	{
+		// find the vehicle by *iter
+		list<Vehicle>::iterator iterVehicle = find_if(
+				vehiclesOnGIS.begin(),
+				vehiclesOnGIS.end(),
+				boost::bind(&Vehicle::gid, _1) == *iter	// match Vehicle GID with GID from GIS
+				);
+
+		if(iterVehicle != vehiclesOnGIS.end())	// we can get to end() if the neighbor GID was an RSU
+			neighbors.push_back( &(*iterVehicle) ); // an iterator is not a pointer to an object. Dereference and rereference.
+	}
+
+
+	if(m_debug)
+	{
+		cout << "DEBUG getVehiclesNearPoint " << GISneighbors.size()
+					<< " neighbors of point X=" << xgeo << ",Y=" << ygeo << " range " << range << " IDs " ;
 		for(vector<Vehicle*>::iterator iter=neighbors.begin(); iter != neighbors.end(); iter++)
 			cout << (*iter)->id << ' ';
 		cout << endl;

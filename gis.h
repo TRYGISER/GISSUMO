@@ -29,9 +29,12 @@ void GIS_updatePoint(pqxx::connection &c, float xx, float yy, unsigned short GID
 void GIS_clearAllPoints(pqxx::connection &c);
 
 // Adds an RSU to the database and GIS.
-void addNewRSU(pqxx::connection &conn, std::vector<RSU> &rsuList, unsigned short id, float xgeo, float ygeo, bool active);
+void addNewRSU(pqxx::connection &conn, std::list<RSU> &rsuList, unsigned short id, float xgeo, float ygeo, bool active);
 
-// Returns a list of iterators that point to vehicles (not RSUs) that we can communicate with.
+// Returns a list of pointers to vehicles (not RSUs) that we can communicate with.
 vector<Vehicle*> getVehiclesInRange(pqxx::connection &conn, list<Vehicle> &vehiclesOnGIS, const Vehicle src);
+
+// Returns a list of pointers to vehicles in a range [range] of [xgeo,ygeo]
+vector<Vehicle*> getVehiclesNearPoint(pqxx::connection &conn, list<Vehicle> &vehiclesOnGIS, const float xgeo, const float ygeo, const unsigned short range);
 
 #endif /* GIS_H_ */

@@ -28,6 +28,8 @@ int main(int argc, char *argv[])
 	bool m_printStatistics = false;
 	bool m_validVehicle = false;
 	bool m_debugLocations = false;
+	bool m_networkEnabled = false;
+	string m_fcdFile = "./fcdoutput.xml";
 	unsigned short m_pause = 0;
 
 	// List of command line options
@@ -37,7 +39,9 @@ int main(int argc, char *argv[])
 		("print-signal-map", "prints an ASCII map of signal quality")
 		("print-statistics", "outputs coverage metrics")
 		("check-valid-vehicles", "counts number of vehicles in the clear")
+		("enable-network", "enables the network layer and packet transmission")
 		("pause", boost::program_options::value<unsigned short>(), "pauses for N milliseconds after every timestep")
+		("fcd-data", boost::program_options::value<string>(), "floating car data file location")
 	    ("debug", "enable debug mode")
 	    ("debug-locations", "debug vehicle location updates")
 	    ("help", "give this help list")
@@ -56,10 +60,13 @@ int main(int argc, char *argv[])
 	if (varMap.count("print-vehicle-map")) 		m_printVehicleMap=true;
 	if (varMap.count("print-signal-map")) 		m_printSignalMap=true;
 	if (varMap.count("print-statistics")) 		m_printStatistics=true;
+	if (varMap.count("enable-network")) 		m_networkEnabled=true;
 	if (varMap.count("check-valid-vehicles"))	m_validVehicle=true;
 	if (varMap.count("pause"))					m_pause=varMap["pause"].as<unsigned short>();
+	if (varMap.count("fcd-data"))				m_fcdFile=varMap["fcd-data"].as<string>();
 	if (varMap.count("help")) 					{ cout << cliOptDesc; return 1; }
 
+	if (m_debug) cout << "BEGIN FCD FILE " << m_fcdFile << endl;
 
 	/* Parse SUMO logs
 	 * This expects SUMO's floating car data (FCD) output with geographic
@@ -75,7 +82,7 @@ int main(int argc, char *argv[])
 
 	// using boost and vector structs
 	ptree tree;
-	read_xml(XML_PATH, tree);
+	read_xml(m_fcdFile, tree);
 	std::vector<Timestep> fcd_output;
 
 	// traverse tree and fill fcd_output with timesteps
@@ -125,7 +132,7 @@ int main(int argc, char *argv[])
 	 */
 
 	// setup vectors and maps
-	vector<RSU> rsuList;			// vector to hold list of RSUs
+	list<RSU> rsuList;			// vector to hold list of RSUs
 	list<Vehicle> vehiclesOnGIS;	// vehicles we've processed from SUMO to GIS
 	CityMapChar vehicleLocations; 		// 2D map for vehicle locations
 	CityMapNum globalSignal;			// 2D map for global signal quality
@@ -215,15 +222,7 @@ int main(int argc, char *argv[])
 				// Debug
 				if(m_debugLocations) cout << "DEBUG Vehicle id=" << iterVeh->id << " exists, gid=" << iterVehicleOnGIS->gid << " update xgeo=" << newVehicle.xgeo << " ygeo=" << newVehicle.ygeo << endl;
 
-				// TODO DELETEME
-				// Get a specific vehicle to act as the accident source
-				if(iterTime->time==60 && iterVehicleOnGIS->id==59)
-				{
-					// vehicle id 60 at time 61 is the accident
-					cout << "ACCIDENT" << endl;
-					simulateAccident(conn, iterTime->time, vehiclesOnGIS, rsuList, *iterVehicleOnGIS);
 
-				}
 			}
 
 			/* 3 - Mark vehicles missing from this timestep as 'parked'.
@@ -231,9 +230,29 @@ int main(int argc, char *argv[])
 			 * We can decide what to do with inactive cars here. Parked/RSU/Uplink.
 			 */
 
-
 		}	// end for(vehicle)
 
+		// Locate a random vehicle at the center of the map to be the accident source
+		// Get a specific vehicle to act as the accident source
+		if(m_networkEnabled)
+			if(iterTime->time==60) // TODO CLI
+			{
+				// Locate a vehicle. Map center is at YCENTER XCENTER
+				// we begin with a range of 8, and keep doubling it until one vehicle is found
+				vector<Vehicle*> centerVehicles; unsigned short centerRange=8;
+				do{
+					centerVehicles = getVehiclesNearPoint(conn,vehiclesOnGIS, XCENTER, YCENTER, centerRange);
+					centerRange *= 2;
+				} while(centerVehicles.size()==0);
+
+				if(m_debug) cout << "DEBUG AccidentSelected on vehicle"
+						<< " vID " << (*(centerVehicles.begin()))->id
+						<< " xgeo " << (*(centerVehicles.begin()))->xgeo
+						<< " ygeo " << (*(centerVehicles.begin()))->xgeo
+						<< endl;
+
+						simulateAccident(conn, iterTime->time, vehiclesOnGIS, rsuList, **(centerVehicles.begin()) );
+			}
 
 		if(m_printStatistics)
 		{
@@ -261,7 +280,7 @@ int main(int argc, char *argv[])
 		/* Go through each RSU and update its coverage map.
 		 * This is computed from the vehicles the RSU sees, and their signal strength.
 		 */
-		for(vector<RSU>::iterator iterRSU = rsuList.begin();
+		for(list<RSU>::iterator iterRSU = rsuList.begin();
 			iterRSU != rsuList.end();
 			iterRSU++)
 		{
@@ -318,7 +337,10 @@ int main(int argc, char *argv[])
 		 * Activate UVCAST and designate vehicles as SCF
 		 * TODO: Create a list of events and process events based on the current time step.
 		 */
-		processNetwork(conn,iterTime->time,vehiclesOnGIS,rsuList);
+		if(m_networkEnabled)
+		{
+			processNetwork(conn,iterTime->time,vehiclesOnGIS,rsuList);
+		}
 
 		/* Compute and print statistics.
 		 *
@@ -368,7 +390,7 @@ int main(int argc, char *argv[])
 					if(globalSignal.map[xx][yy])
 						vehicleLocations.map[xx][yy]=boost::lexical_cast<char>(globalSignal.map[xx][yy]);
 			// overlay RSUs on the map
-			for(vector<RSU>::iterator iter=rsuList.begin(); iter!=rsuList.end(); iter++)
+			for(list<RSU>::iterator iter=rsuList.begin(); iter!=rsuList.end(); iter++)
 				if(iter->active)
 					vehicleLocations.map[iter->xcell][iter->ycell]='R';
 			// print the vehicle map
@@ -387,7 +409,7 @@ int main(int argc, char *argv[])
 
 			if(m_printVehicleMap)	// --print-vehicle-map
 			{
-				for(vector<RSU>::iterator iter=rsuList.begin(); iter!=rsuList.end(); iter++)
+				for(list<RSU>::iterator iter=rsuList.begin(); iter!=rsuList.end(); iter++)
 					if(iter->active)
 						vehicleLocations.map[iter->xcell][iter->ycell]='R';		// overlay RSUs on the map
 				printCityMap(vehicleLocations);			// print the vehicle map
