@@ -26,9 +26,11 @@ int main(int argc, char *argv[])
 	bool m_printVehicleMap = false;
 	bool m_printSignalMap = false;
 	bool m_printStatistics = false;
+	bool m_printEndStatistics = false;
 	bool m_validVehicle = false;
 	bool m_debugLocations = false;
 	bool m_networkEnabled = false;
+	unsigned short m_stopTime=0;
 	string m_fcdFile = "./fcdoutput.xml";
 	unsigned short m_pause = 0;
 
@@ -38,8 +40,10 @@ int main(int argc, char *argv[])
 		("print-vehicle-map", "prints an ASCII map of vehicle positions")
 		("print-signal-map", "prints an ASCII map of signal quality")
 		("print-statistics", "outputs coverage metrics")
+		("print-end-statistics", "output final counts")
 		("check-valid-vehicles", "counts number of vehicles in the clear")
 		("enable-network", "enables the network layer and packet transmission")
+		("stop-time", boost::program_options::value<unsigned short>(), "stops the simulation at a specific time")
 		("pause", boost::program_options::value<unsigned short>(), "pauses for N milliseconds after every timestep")
 		("fcd-data", boost::program_options::value<string>(), "floating car data file location")
 	    ("debug", "enable debug mode")
@@ -60,7 +64,9 @@ int main(int argc, char *argv[])
 	if (varMap.count("print-vehicle-map")) 		m_printVehicleMap=true;
 	if (varMap.count("print-signal-map")) 		m_printSignalMap=true;
 	if (varMap.count("print-statistics")) 		m_printStatistics=true;
+	if (varMap.count("print-end-statistics")) 	m_printEndStatistics=true;
 	if (varMap.count("enable-network")) 		m_networkEnabled=true;
+	if (varMap.count("stop-time")) 				m_stopTime=varMap["stop-time"].as<unsigned short>();
 	if (varMap.count("check-valid-vehicles"))	m_validVehicle=true;
 	if (varMap.count("pause"))					m_pause=varMap["pause"].as<unsigned short>();
 	if (varMap.count("fcd-data"))				m_fcdFile=varMap["fcd-data"].as<string>();
@@ -232,41 +238,6 @@ int main(int argc, char *argv[])
 
 		}	// end for(vehicle)
 
-		// Locate a random vehicle at the center of the map to be the accident source
-		// Get a specific vehicle to act as the accident source
-		if(m_networkEnabled)
-			if(iterTime->time==60) // TODO CLI
-			{
-				// Locate a vehicle. Map center is at YCENTER XCENTER
-				// we begin with a range of 8, and keep doubling it until one vehicle is found
-				vector<Vehicle*> centerVehicles; unsigned short centerRange=8;
-				do{
-					centerVehicles = getVehiclesNearPoint(conn,vehiclesOnGIS, XCENTER, YCENTER, centerRange);
-					centerRange *= 2;
-				} while(centerVehicles.size()==0);
-
-				if(m_debug) cout << "DEBUG AccidentSelected on vehicle"
-						<< " vID " << (*(centerVehicles.begin()))->id
-						<< " xgeo " << (*(centerVehicles.begin()))->xgeo
-						<< " ygeo " << (*(centerVehicles.begin()))->xgeo
-						<< endl;
-
-						simulateAccident(conn, iterTime->time, vehiclesOnGIS, rsuList, **(centerVehicles.begin()) );
-			}
-
-		if(m_printStatistics)
-		{
-			short countInactive=0, countActive=0;
-			for(list<Vehicle>::iterator
-					iter=vehiclesOnGIS.begin();
-					iter!=vehiclesOnGIS.end();
-					iter++)
-				if(iter->active) countActive++; else countInactive++;
-			cout << "STAT vehicleStatus"
-					<< " active " << countActive
-					<< " inactive " << countInactive
-					<< endl;
-		}
 
 		/* Vehicles are now in the GIS map as POINTs.
 		 * All new vehicles added to GIS, all existing vehicles' positions updated on GIS.
@@ -340,11 +311,48 @@ int main(int argc, char *argv[])
 		if(m_networkEnabled)
 		{
 			processNetwork(conn,iterTime->time,vehiclesOnGIS,rsuList);
+
+			// Create an accident in the middle of the map
+			// Locate a random vehicle at the center of the map to be the accident source
+			// Get a specific vehicle to act as the accident source
+			if(iterTime->time==60) // TODO CLI
+			{
+				// Locate a vehicle. Map center is at YCENTER XCENTER
+				// we begin with a range of 8, and keep doubling it until one vehicle is found
+				vector<Vehicle*> centerVehicles; unsigned short centerRange=8;
+				do{
+					centerVehicles = getVehiclesNearPoint(conn,vehiclesOnGIS, XCENTER, YCENTER, centerRange);
+					centerRange *= 2;
+				} while(centerVehicles.size()==0);
+
+				if(m_debug) cout << "DEBUG AccidentSelected on vehicle"
+						<< " vID " << (*(centerVehicles.begin()))->id
+						<< " xgeo " << (*(centerVehicles.begin()))->xgeo
+						<< " ygeo " << (*(centerVehicles.begin()))->xgeo
+						<< endl;
+
+						simulateAccident(conn, iterTime->time, vehiclesOnGIS, rsuList, **(centerVehicles.begin()) );
+			}
 		}
+
+
 
 		/* Compute and print statistics.
 		 *
 		 */
+		if(m_printStatistics)
+		{
+			short countInactive=0, countActive=0;
+			for(list<Vehicle>::iterator
+					iter=vehiclesOnGIS.begin();
+					iter!=vehiclesOnGIS.end();
+					iter++)
+				if(iter->active) countActive++; else countInactive++;
+			cout << "STAT vehicleStatus"
+					<< " active " << countActive
+					<< " inactive " << countInactive
+					<< endl;
+		}
 
 		if(m_printStatistics)
 		{
@@ -426,12 +434,14 @@ int main(int argc, char *argv[])
 		 * End of each time step
 		 */
 
+		if(m_stopTime && iterTime->time>=m_stopTime)
+			break;
 	}	// end for(timestep)
 
 
 	/* Print final count of packet propagation times.
 	 */
-	if(m_printStatistics)
+	if(m_printEndStatistics)
 	{
 		cout << "STAT PacketPropagationTime"
 				<< "\nTime\tCount" << endl;

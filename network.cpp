@@ -8,6 +8,9 @@ void processNetwork(pqxx::connection &conn, float timestep, list<Vehicle> &vehic
 {
 	if(m_debug) cout << "DEBUG processNetwork" << " timestep " << timestep << endl;
 
+	// begin packet propagation time collection
+	s_packetPropagationTime[timestep]=0;
+
 	/* UVCAST approach:
 	 * Go through each vehicle. If it's tagged as an SCF carrier, broadcast its packet to neighbors.
 	 * UVCAST considers that vehicles advertise which emergency messages they already received in their
@@ -112,7 +115,10 @@ void initialBroadcast(pqxx::connection &conn, float timestep, list<Vehicle> &veh
 	if(selfVeh.id != selfVeh.packet.packetSrc)	// the accident source's packet.m_src is itself, the others aren't.
 	{
 		if(neighbors.size()<2)	// TODO
+		{
 			selfVeh.scf = true;
+			if(m_debug) cout << "DEBUG UVCAST SCF true" << endl;
+		}
 		else
 			selfVeh.scf = UVCAST_determineSCFtask(UVCAST_computeAngles(srcVeh, selfVeh, neighbors));
 	}
