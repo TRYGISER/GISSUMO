@@ -30,6 +30,7 @@ int main(int argc, char *argv[])
 	bool m_validVehicle = false;
 	bool m_debugLocations = false;
 	bool m_networkEnabled = false;
+	unsigned short m_accidentTime=60;
 	unsigned short m_stopTime=0;
 	string m_fcdFile = "./fcdoutput.xml";
 	unsigned short m_pause = 0;
@@ -43,6 +44,7 @@ int main(int argc, char *argv[])
 		("print-end-statistics", "output final counts")
 		("check-valid-vehicles", "counts number of vehicles in the clear")
 		("enable-network", "enables the network layer and packet transmission")
+		("accident-time", boost::program_options::value<unsigned short>(), "creates an accident at a specific time")
 		("stop-time", boost::program_options::value<unsigned short>(), "stops the simulation at a specific time")
 		("pause", boost::program_options::value<unsigned short>(), "pauses for N milliseconds after every timestep")
 		("fcd-data", boost::program_options::value<string>(), "floating car data file location")
@@ -66,6 +68,7 @@ int main(int argc, char *argv[])
 	if (varMap.count("print-statistics")) 		m_printStatistics=true;
 	if (varMap.count("print-end-statistics")) 	m_printEndStatistics=true;
 	if (varMap.count("enable-network")) 		m_networkEnabled=true;
+	if (varMap.count("accident-time")) 			m_accidentTime=varMap["accident-time"].as<unsigned short>();
 	if (varMap.count("stop-time")) 				m_stopTime=varMap["stop-time"].as<unsigned short>();
 	if (varMap.count("check-valid-vehicles"))	m_validVehicle=true;
 	if (varMap.count("pause"))					m_pause=varMap["pause"].as<unsigned short>();
@@ -306,7 +309,6 @@ int main(int argc, char *argv[])
 		/* Network layer.
 		 * Act on vehiclesOnGIS and rsuList, and disseminate packets.
 		 * Activate UVCAST and designate vehicles as SCF
-		 * TODO: Create a list of events and process events based on the current time step.
 		 */
 		if(m_networkEnabled)
 		{
@@ -315,7 +317,7 @@ int main(int argc, char *argv[])
 			// Create an accident in the middle of the map
 			// Locate a random vehicle at the center of the map to be the accident source
 			// Get a specific vehicle to act as the accident source
-			if(iterTime->time==60) // TODO CLI
+			if(iterTime->time==m_accidentTime) // TODO CLI
 			{
 				// Locate a vehicle. Map center is at YCENTER XCENTER
 				// we begin with a range of 8, and keep doubling it until one vehicle is found
