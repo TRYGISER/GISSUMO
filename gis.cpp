@@ -136,7 +136,7 @@ void GIS_clearAllPoints(pqxx::connection &c)
 }
 
 
-void addNewRSU(pqxx::connection &conn, std::list<RSU> &rsuList, unsigned short id, float xgeo, float ygeo, bool active)
+void addNewRSU(pqxx::connection &conn, list<RSU> &rsuList, unsigned short id, float xgeo, float ygeo, bool active)
 {
 	RSU testRSU;
 	testRSU.id=id;	// building IDs start on #17779, through #35140
@@ -247,4 +247,57 @@ vector<Vehicle*> getVehiclesNearPoint(pqxx::connection &conn, list<Vehicle> &veh
 	}
 
 	return neighbors;
+}
+
+vector<RSU*> getRSUsInRange(pqxx::connection &conn, list<RSU> &rsuList, const Vehicle src)
+{
+	/* Step 1: ask GIS for neighbors
+	 * Step 2: match gid to RSU objects
+	 * Step 3: get distance to neighbors, obstruction status
+	 * Step 4: trim based on signal strength (<2 drop)
+	 */
+	vector<RSU*> RSUneighbors;
+	vector<unsigned short> GISneighbors;
+
+	// Step 1
+	GISneighbors = GIS_getPointsInRange(conn,src.xgeo,src.ygeo,MAXRANGE);
+//	GISneighbors.erase(std::remove(GISneighbors.begin(), GISneighbors.end(), src.gid), GISneighbors.end() ); // drop ourselves from the list
+
+
+	// Step 2
+	for(vector<unsigned short>::iterator iter=GISneighbors.begin(); iter != GISneighbors.end(); iter++)
+	{
+		// find the vehicle by *iter
+		list<RSU>::iterator iterRSU = find_if(
+				rsuList.begin(),
+				rsuList.end(),
+				boost::bind(&RSU::gid, _1) == *iter	// match Vehicle GID with GID from GIS
+				);
+
+		if(iterRSU != rsuList.end())	// if it gets to end() then we found no RSUs
+			if(iterRSU->active)	// we want active RSUs only
+			{
+				// Step 3
+				// get the distance, obstruction, and signal to src
+				unsigned short distance = GIS_distanceToPointGID(conn,src.xgeo,src.ygeo,iterRSU->gid);
+				bool isLineOfSight = GIS_isLineOfSight(conn,src.xgeo,src.ygeo,iterRSU->xgeo,iterRSU->ygeo);
+				unsigned short signal = getSignalQuality(distance, isLineOfSight);
+
+				// Step 4
+				if(signal>=2)
+					RSUneighbors.push_back( &(*iterRSU) ); // an iterator is not a pointer to an object. Dereference and rereference.
+			}
+	}
+
+
+	if(m_debug)
+	{
+		cout << "DEBUG getRSUsInRange found RSUs " << RSUneighbors.size() << '/' << GISneighbors.size()
+					<< ", RSUs in range of vID " << src.id << ": " ;
+		for(vector<RSU*>::iterator iter=RSUneighbors.begin(); iter != RSUneighbors.end(); iter++)
+			cout << (*iter)->id << ' ';
+		cout << endl;
+	}
+
+	return RSUneighbors;
 }

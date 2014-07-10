@@ -114,7 +114,7 @@ void initialBroadcast(pqxx::connection &conn, float timestep, list<Vehicle> &veh
 	// UVCAST doesn't work when neighbors < 3 (?)
 	if(selfVeh.id != selfVeh.packet.packetSrc)	// the accident source's packet.m_src is itself, the others aren't.
 	{
-		if(neighbors.size()<2)	// TODO
+		if(neighbors.size()<2)	// If we only have 1 neighbor, that neighbor was the message source, and we're an isolated edge.
 		{
 			selfVeh.scf = true;
 			if(m_debug) cout << "DEBUG UVCAST SCF true" << endl;

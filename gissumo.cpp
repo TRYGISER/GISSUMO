@@ -446,11 +446,11 @@ int main(int argc, char *argv[])
 	if(m_printEndStatistics)
 	{
 		cout << "STAT PacketPropagationTime"
-				<< "\nTime\tCount" << endl;
+				<< "\nCount\tTime" << endl;
 		for(map<float,int>::iterator mapIter=s_packetPropagationTime.begin();
 				mapIter!=s_packetPropagationTime.end();
 				mapIter++)
-			cout << mapIter->first << '\t' << mapIter->second << '\n';
+			cout << mapIter->second << '\t' << mapIter->first << '\n';
 
 	}
 

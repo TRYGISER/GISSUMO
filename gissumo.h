@@ -116,6 +116,14 @@ public:
 };
 
 
+struct Packet
+{
+	unsigned short packetSrc=0;
+	unsigned short packetID=0;
+	float packetTime=0;
+};
+
+
 class RSU {
 public:
 	unsigned short id;		// numeric identifier
@@ -126,6 +134,8 @@ public:
 	float xgeo;				// x,y geographic position
 	float ygeo;
 	array< array<unsigned short,PARKEDCELLCOVERAGE>,PARKEDCELLCOVERAGE > coverage;	// coverage map, vehicle is at center cell
+	Packet packet;		// store a single packet for now
+//	vector<Packet> p_buffer;	// packet storage
 
 	// this initialization takes ID and geographic coordinates, and completes the cell coordinates automatically
 	RSU(unsigned short iid, float xx, float yy)
@@ -148,12 +158,6 @@ public:
 	}
 };
 
-struct Packet
-{
-	unsigned short packetSrc=0;
-	unsigned short packetID=0;
-	float packetTime=0;
-};
 
 struct Vehicle
 {
