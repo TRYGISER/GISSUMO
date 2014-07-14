@@ -22,7 +22,7 @@ void processNetwork(pqxx::connection &conn, float timestep, list<Vehicle> &vehic
 	// messages received from an SCF (don't rebroadcast).
 	for(list<Vehicle>::iterator iterVehicle=vehiclesOnGIS.begin(); iterVehicle!=vehiclesOnGIS.end(); iterVehicle++)
 		if(iterVehicle->scf)
-			rebroadcastPacket(conn, timestep, vehiclesOnGIS, rsuList, *iterVehicle);
+			rebroadcastPacket(conn, timestep, vehiclesOnGIS, rsuList, &(*iterVehicle) );
 
 
 	/* RSUs with packets rebroadcast their message as well and trigger UVCAST (new source points).
@@ -30,20 +30,7 @@ void processNetwork(pqxx::connection &conn, float timestep, list<Vehicle> &vehic
 	if(m_rsu)
 		for(list<RSU>::iterator iterRSU=rsuList.begin(); iterRSU!=rsuList.end(); iterRSU++)
 			if(iterRSU->packet.packetID)
-			{
-				/* TODO: RSUs and Vehicles should both be classes derived from
-				 * the same main class with common characteristics, id, gid, xgeo, ygeo, active, etc.
-				 */
-				Vehicle rsuCar;
-				rsuCar.xgeo = iterRSU->xgeo;
-				rsuCar.ygeo = iterRSU->ygeo;
-				rsuCar.id = iterRSU->id;
-				rsuCar.gid = iterRSU->gid;
-				rsuCar.packet = iterRSU->packet;
-				rsuCar.packet.packetSrc = rsuCar.id; 	// required so that UVCAST isn't called on this vehicle
-				initialBroadcast(conn, timestep, vehiclesOnGIS, rsuList, rsuCar, rsuCar);
-	//			rebroadcastPacket(conn, timestep, vehiclesOnGIS, rsuList, rsuCar);
-			}
+				initialBroadcast(conn, timestep, vehiclesOnGIS, rsuList, &(*iterRSU), &(*iterRSU));
 
 	// All RSUs share the same packet. This could be improved.
 	if(m_rsu)
@@ -55,24 +42,24 @@ void processNetwork(pqxx::connection &conn, float timestep, list<Vehicle> &vehic
 }
 
 
-void rebroadcastPacket(pqxx::connection &conn, float timestep, list<Vehicle> &vehiclesOnGIS, list<RSU> &rsuList, Vehicle &veh)
+void rebroadcastPacket(pqxx::connection &conn, float timestep, list<Vehicle> &vehiclesOnGIS, list<RSU> &rsuList, Vehicle *veh)
 {
 	// Get our neighbor list. This routine already returns vehicles where communication is possible (signal>=2)
-	vector<Vehicle*> neighbors = getVehiclesInRange(conn, vehiclesOnGIS, veh);
+	vector<Vehicle*> neighbors = getVehiclesInRange(conn, vehiclesOnGIS, *veh);
 
 	// Go through each neighbor. If the packet isn't the same as ours, send our packet to them.
 	for(vector<Vehicle*>::iterator iter=neighbors.begin(); iter!=neighbors.end(); iter++)
-		if( (*iter)->packet.packetID != veh.packet.packetID )
+		if( (*iter)->packet.packetID != veh->packet.packetID )
 			{
-				(*iter)->packet.packetID = veh.packet.packetID;
-				(*iter)->packet.packetSrc = veh.id;
+				(*iter)->packet.packetID = veh->packet.packetID;
+				(*iter)->packet.packetSrc = veh->id;
 				(*iter)->packet.packetTime = timestep;
 				s_packetCount++;
 				s_packetPropagationTime[timestep]++;
 
 				if(m_debug)
 					cout << "DEBUG rebroadcastPacket"
-							<< " from vID " << veh.id
+							<< " from vID " << veh->id
 							<< " to vID " << (*iter)->id
 							<< endl;
 			}
@@ -80,77 +67,70 @@ void rebroadcastPacket(pqxx::connection &conn, float timestep, list<Vehicle> &ve
 	if(m_rsu)
 	{
 		// get our RSU neighbor list
-		vector<RSU*> RSUneighbors = getRSUsInRange(conn, rsuList, veh);
+		vector<RSU*> RSUneighbors = getRSUsInRange(conn, rsuList, *veh);
 		// Go through each RSU. If the packet isn't the same as ours, send our packet to it.
 		for(vector<RSU*>::iterator iter=RSUneighbors.begin(); iter!=RSUneighbors.end(); iter++)
-			if( (*iter)->packet.packetID != veh.packet.packetID )
+			if( (*iter)->packet.packetID != veh->packet.packetID )
 				{
-					(*iter)->packet.packetID = veh.packet.packetID;
-					(*iter)->packet.packetSrc = veh.id;
+					(*iter)->packet.packetID = veh->packet.packetID;
+					(*iter)->packet.packetSrc = veh->id;
 					(*iter)->packet.packetTime = timestep;
 					s_packetCount++;
 	//				s_packetPropagationTime[timestep]++;
 
 					if(m_debug)
 						cout << "DEBUG rebroadcastPacket RSU"
-								<< " from vID " << veh.id
+								<< " from vID " << veh->id
 								<< " to vID " << (*iter)->id
 								<< endl;
 				}
 	}
 }
 
-void simulateAccident(pqxx::connection &conn, float timestep, list<Vehicle> &vehiclesOnGIS, list<RSU> &rsuList, Vehicle &accidentSource)
+void simulateAccident(pqxx::connection &conn, float timestep, list<Vehicle> &vehiclesOnGIS, list<RSU> &rsuList, Vehicle* accidentSource)
 {
 	if(m_debug)
 		cout << "DEBUG simulateAccident"
 				<< " time " << timestep
-				<< " srcID " << accidentSource.id
+				<< " srcID " << accidentSource->id
 				<< endl;
 
-//	// An accident begins at accidentSource. We get our neighbors.
-//	vector<Vehicle*> neighbors = getVehiclesInRange(conn, vehiclesOnGIS, accidentSource);
-//
-//	// No neighbors: not what we want to simulate, exit.
-//	assert(neighbors.size()>0);
-
 	// Give the source vehicle an emergency message.
-	accidentSource.packet.packetID = EMERGENCYID;
-	accidentSource.packet.packetSrc = accidentSource.id;
-	accidentSource.packet.packetTime = timestep;
+	accidentSource->packet.packetID = EMERGENCYID;
+	accidentSource->packet.packetSrc = accidentSource->id;
+	accidentSource->packet.packetTime = timestep;
 
 	// Get the message going
 	initialBroadcast(conn, timestep, vehiclesOnGIS, rsuList, accidentSource, accidentSource);
 }
 
-void initialBroadcast(pqxx::connection &conn, float timestep, list<Vehicle> &vehiclesOnGIS, list<RSU> &rsuList, Vehicle &selfVeh, Vehicle &srcVeh)
+void initialBroadcast(pqxx::connection &conn, float timestep, list<Vehicle> &vehiclesOnGIS, list<RSU> &rsuList, RoadObject* selfVeh, RoadObject* srcVeh)
 {
 	/* This is a recursive function.
 	 * Make sure that the vehicle on the first call has a packet.
 	 */
 	if(m_debug)
 		cout << "DEBUG initialBroadcast "
-				<< " called by vID " << srcVeh.id
-				<< " on vID " << selfVeh.id
+				<< " called by vID " << srcVeh->id
+				<< " on vID " << selfVeh->id
 				<< endl;
 
 	// We get our neighbors.
-	vector<Vehicle*> neighbors = getVehiclesInRange(conn, vehiclesOnGIS, selfVeh);
+	vector<Vehicle*> neighbors = getVehiclesInRange(conn, vehiclesOnGIS, *selfVeh);
 
 	// We broadcast the packet. Those who don't have the packet already get initialBroadcast() called on them too.
 	for(vector<Vehicle*>::iterator iter=neighbors.begin(); iter!=neighbors.end(); iter++)
-		if((*iter)->packet.packetID != selfVeh.packet.packetID)
+		if((*iter)->packet.packetID != selfVeh->packet.packetID)
 		{
 			// Neighbor doesn't have our packet. Give it, and stat.
-//			if(m_debug) cout << "\tinitialBroadcast giving packet to vID " << (*iter)->id << endl;
-			(*iter)->packet.packetID = selfVeh.packet.packetID;
-			(*iter)->packet.packetSrc = selfVeh.id;
+			(*iter)->packet.packetID = selfVeh->packet.packetID;
+			(*iter)->packet.packetSrc = selfVeh->id;
 			(*iter)->packet.packetTime = timestep;
 			s_packetCount++;
 			s_packetPropagationTime[timestep]++;
 
 			// Do initialBroadcast on it.
-			initialBroadcast(conn, timestep, vehiclesOnGIS, rsuList, **iter, selfVeh);
+			initialBroadcast(conn, timestep, vehiclesOnGIS, rsuList, *iter, selfVeh);
 		}
 
 	if(m_rsu)
@@ -158,38 +138,37 @@ void initialBroadcast(pqxx::connection &conn, float timestep, list<Vehicle> &veh
 		/* Get RSU neighbors and pass the message on to them. Don't call InitialBroadcast on RSUs.
 		 */
 		// Get our RSU neighbor list
-		vector<RSU*> RSUneighbors = getRSUsInRange(conn, rsuList, selfVeh);
+		vector<RSU*> RSUneighbors = getRSUsInRange(conn, rsuList, *selfVeh);
 		// Go through each RSU. If the packet isn't the same as ours, send our packet to it.
 		for(vector<RSU*>::iterator iter=RSUneighbors.begin(); iter!=RSUneighbors.end(); iter++)
-			if( (*iter)->packet.packetID != selfVeh.packet.packetID )
+			if( (*iter)->packet.packetID != selfVeh->packet.packetID )
 				{
-					(*iter)->packet.packetID = selfVeh.packet.packetID;
-					(*iter)->packet.packetSrc = selfVeh.id;
+					(*iter)->packet.packetID = selfVeh->packet.packetID;
+					(*iter)->packet.packetSrc = selfVeh->id;
 					(*iter)->packet.packetTime = timestep;
 					s_packetCount++;
 	//				s_packetPropagationTime[timestep]++;
 
 					if(m_debug)
 						cout << "DEBUG initialBroadcast RSU"
-								<< " from vID " << selfVeh.id
+								<< " from vID " << selfVeh->id
 								<< " to vID " << (*iter)->id
 								<< endl;
 				}
 	}
 
-//	printListOfVehicles(vehiclesOnGIS);
-
 	// Call UVCAST and decide SCF function.
 	// UVCAST doesn't work when neighbors < 3 (?)
-	if(selfVeh.id != selfVeh.packet.packetSrc)	// the accident source's packet.m_src is itself, the others aren't.
-	{
-		if(neighbors.size()<2)	// If we only have 1 neighbor, that neighbor was the message source, and we're an isolated edge.
+	if(selfVeh->type == RoadObject::VEHICLE) 		// only call UVCAST on cars, not RSUs
+		if(selfVeh->id != selfVeh->packet.packetSrc)	// the accident source's packet.m_src is itself, the others aren't.
 		{
-			selfVeh.scf = true;
-			if(m_debug) cout << "DEBUG UVCAST SCF true" << endl;
+			if(neighbors.size()<2)	// If we only have 1 neighbor, that neighbor was the message source, and we're an isolated edge.
+			{
+				( static_cast<Vehicle*>(selfVeh) )->scf = true;
+				if(m_debug) cout << "DEBUG UVCAST SCF true" << endl;
+			}
+			else
+				( static_cast<Vehicle*>(selfVeh) )->scf = UVCAST_determineSCFtask(UVCAST_computeAngles(srcVeh, selfVeh, neighbors));
 		}
-		else
-			selfVeh.scf = UVCAST_determineSCFtask(UVCAST_computeAngles(srcVeh, selfVeh, neighbors));
-	}
 
 }

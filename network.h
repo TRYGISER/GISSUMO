@@ -10,12 +10,12 @@
 void processNetwork(pqxx::connection &conn, float timestep, list<Vehicle> &vehiclesOnGIS, list<RSU> &rsuList);
 
 // Vehicle veh sends its message to all neighbors.
-void rebroadcastPacket(pqxx::connection &conn, float timestep, list<Vehicle> &vehiclesOnGIS, list<RSU> &rsuList, Vehicle &veh);
+void rebroadcastPacket(pqxx::connection &conn, float timestep, list<Vehicle> &vehiclesOnGIS, list<RSU> &rsuList, Vehicle *veh);
 
 // Simulates an accident on Vehicle accidentSource, gets UVCAST going.
-void simulateAccident(pqxx::connection &conn, float timestep, list<Vehicle> &vehiclesOnGIS, list<RSU> &rsuList, Vehicle &accidentSource);
+void simulateAccident(pqxx::connection &conn, float timestep, list<Vehicle> &vehiclesOnGIS, list<RSU> &rsuList, Vehicle* accidentSource);
 
 // An initial broadcast is recursive, and will call itself for all vehicles that are part of a cluster.
-void initialBroadcast(pqxx::connection &conn, float timestep, list<Vehicle> &vehiclesOnGIS, list<RSU> &rsuList, Vehicle &selfVeh, Vehicle &srcVeh);
+void initialBroadcast(pqxx::connection &conn, float timestep, list<Vehicle> &vehiclesOnGIS, list<RSU> &rsuList, RoadObject* selfVeh, RoadObject* srcVeh);
 
 #endif /* NETWORK_H_ */

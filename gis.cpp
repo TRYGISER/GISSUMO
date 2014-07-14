@@ -155,7 +155,7 @@ void addNewRSU(pqxx::connection &conn, list<RSU> &rsuList, unsigned short id, fl
 }
 
 
-vector<Vehicle*> getVehiclesInRange(pqxx::connection &conn, list<Vehicle> &vehiclesOnGIS, const Vehicle src)
+vector<Vehicle*> getVehiclesInRange(pqxx::connection &conn, list<Vehicle> &vehiclesOnGIS, const RoadObject src)
 {
 	/* Step 1: ask GIS for neighbors
 	 * Step 2: match gid to Vehicle objects
@@ -249,7 +249,7 @@ vector<Vehicle*> getVehiclesNearPoint(pqxx::connection &conn, list<Vehicle> &veh
 	return neighbors;
 }
 
-vector<RSU*> getRSUsInRange(pqxx::connection &conn, list<RSU> &rsuList, const Vehicle src)
+vector<RSU*> getRSUsInRange(pqxx::connection &conn, list<RSU> &rsuList, const RoadObject src)
 {
 	/* Step 1: ask GIS for neighbors
 	 * Step 2: match gid to RSU objects
@@ -261,7 +261,7 @@ vector<RSU*> getRSUsInRange(pqxx::connection &conn, list<RSU> &rsuList, const Ve
 
 	// Step 1
 	GISneighbors = GIS_getPointsInRange(conn,src.xgeo,src.ygeo,MAXRANGE);
-//	GISneighbors.erase(std::remove(GISneighbors.begin(), GISneighbors.end(), src.gid), GISneighbors.end() ); // drop ourselves from the list
+	GISneighbors.erase(std::remove(GISneighbors.begin(), GISneighbors.end(), src.gid), GISneighbors.end() ); // drop ourselves from the list
 
 
 	// Step 2

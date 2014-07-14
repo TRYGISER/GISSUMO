@@ -356,7 +356,7 @@ int main(int argc, char *argv[])
 						<< " ygeo " << (*(centerVehicles.begin()))->xgeo
 						<< endl;
 
-						simulateAccident(conn, iterTime->time, vehiclesOnGIS, rsuList, **(centerVehicles.begin()) );
+						simulateAccident(conn, iterTime->time, vehiclesOnGIS, rsuList, *(centerVehicles.begin()) );
 			}
 		}
 

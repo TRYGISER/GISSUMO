@@ -1,15 +1,15 @@
 #include "uvcast.h"
 
-vector<float> UVCAST_computeAngles(Vehicle src, Vehicle self, vector<Vehicle*> neighbors)
+vector<float> UVCAST_computeAngles(RoadObject* src, RoadObject* self, vector<Vehicle*> neighbors)
 {
 	vector<float> angles;
 
-	double srcAngle = atan2(self.ygeo-src.ygeo, self.xgeo-src.xgeo) * 180 / PI;
+	double srcAngle = atan2(self->ygeo-src->ygeo, self->xgeo-src->xgeo) * 180 / PI;
 
 	// go through our neighbors
 	for(vector<Vehicle*>::iterator iter=neighbors.begin(); iter!=neighbors.end(); iter++)
 	{
-		double neighAngle = atan2( (*iter)->ygeo-src.ygeo, (*iter)->xgeo-src.xgeo) * 180 / PI;
+		double neighAngle = atan2( (*iter)->ygeo-src->ygeo, (*iter)->xgeo-src->xgeo) * 180 / PI;
 
 		float deltaAngle = srcAngle-neighAngle;
 
@@ -29,8 +29,8 @@ vector<float> UVCAST_computeAngles(Vehicle src, Vehicle self, vector<Vehicle*> n
 	if(m_debug)
 	{
 		cout << "DEBUG UVCAST ANGLES"
-				<< " srcid=" << src.id
-				<< " dstid=" << self.id
+				<< " srcid=" << src->id
+				<< " dstid=" << self->id
 				<< " neighbors=" << neighbors.size()
 				<< '\n';
 		cout << "\tangles: ";
