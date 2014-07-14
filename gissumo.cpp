@@ -12,6 +12,7 @@ const ptree& empty_ptree(){
 
 // Can extern the debug variable.
 bool m_debug = false;
+bool m_rsu = false;
 // From network
 extern map<float,int> s_packetPropagationTime;
 
@@ -29,6 +30,7 @@ int main(int argc, char *argv[])
 	bool m_printEndStatistics = false;
 	bool m_validVehicle = false;
 	bool m_debugLocations = false;
+	bool m_debugCellMaps = false;
 	bool m_networkEnabled = false;
 	unsigned short m_accidentTime=60;
 	unsigned short m_stopTime=0;
@@ -44,12 +46,14 @@ int main(int argc, char *argv[])
 		("print-end-statistics", "output final counts")
 		("check-valid-vehicles", "counts number of vehicles in the clear")
 		("enable-network", "enables the network layer and packet transmission")
+		("enable-rsu", "enables the RSU communication code")
 		("accident-time", boost::program_options::value<unsigned short>(), "creates an accident at a specific time")
 		("stop-time", boost::program_options::value<unsigned short>(), "stops the simulation at a specific time")
 		("pause", boost::program_options::value<unsigned short>(), "pauses for N milliseconds after every timestep")
 		("fcd-data", boost::program_options::value<string>(), "floating car data file location")
 	    ("debug", "enable debug mode")
 	    ("debug-locations", "debug vehicle location updates")
+	    ("debug-cell-maps", "debug cell map updates")
 	    ("help", "give this help list")
 	;
 
@@ -63,11 +67,13 @@ int main(int argc, char *argv[])
 	// Process options
 	if (varMap.count("debug")) 					m_debug=true;
 	if (varMap.count("debug-locations")) 		m_debugLocations=true;
+	if (varMap.count("debug-cell-maps")) 		m_debugCellMaps=true;
 	if (varMap.count("print-vehicle-map")) 		m_printVehicleMap=true;
 	if (varMap.count("print-signal-map")) 		m_printSignalMap=true;
 	if (varMap.count("print-statistics")) 		m_printStatistics=true;
 	if (varMap.count("print-end-statistics")) 	m_printEndStatistics=true;
 	if (varMap.count("enable-network")) 		m_networkEnabled=true;
+	if (varMap.count("enable-rsu")) 			m_rsu=true;
 	if (varMap.count("accident-time")) 			m_accidentTime=varMap["accident-time"].as<unsigned short>();
 	if (varMap.count("stop-time")) 				m_stopTime=varMap["stop-time"].as<unsigned short>();
 	if (varMap.count("check-valid-vehicles"))	m_validVehicle=true;
@@ -147,9 +153,26 @@ int main(int argc, char *argv[])
 	CityMapNum globalSignal;			// 2D map for global signal quality
 
 
-	// Add an RSU
-//	addNewRSU(conn, rsuList, 10000, -8.616050, 41.164798, true);
-//	addNewRSU(conn, rsuList, 10001, -8.619287, 41.164966, true);
+	if(m_rsu)
+	{
+		// Add an RSU
+		// Bottom left
+		addNewRSU(conn, rsuList, 10000, -8.619278, 41.162600, true);
+		// Bottom right
+		addNewRSU(conn, rsuList, 10001, -8.614409, 41.162411, true);
+		// Top right
+		addNewRSU(conn, rsuList, 10002, -8.614507, 41.166282, true);
+		// Top left
+		addNewRSU(conn, rsuList, 10003, -8.620375, 41.165852, true);
+		// North
+		addNewRSU(conn, rsuList, 10004, -8.617054, 41.167548, true);
+		// East
+		addNewRSU(conn, rsuList, 10005, -8.614909, 41.164852, true);
+		// South
+		addNewRSU(conn, rsuList, 10006, -8.617476, 41.163523, true);
+		// West
+		addNewRSU(conn, rsuList, 10007, -8.620539, 41.164816, true);
+	}
 
 //	vector<unsigned short> neighList = GIS_getPointsInRange(conn,testRSU.xgeo,testRSU.ygeo,100);
 //	unsigned short distTest = GIS_distanceToPointGID(conn,-8.6160498,41.165799,testRSU.gid);
@@ -272,31 +295,31 @@ int main(int argc, char *argv[])
 				if(distneigh)	// ignore ourselves (distance==0)
 				{
 					// carry debug
-					if(m_debug) cout << "DEBUG\t neighbor gid=" << *neighbor << " distance " << distneigh << '\n';
+					if(m_debugCellMaps) cout << "DEBUG\t neighbor gid=" << *neighbor << " distance " << distneigh << '\n';
 
 					// get the neighbor's coordinates
 					float xgeoneigh=0, ygeoneigh=0;
 					GIS_getPointCoords(conn, *neighbor, xgeoneigh, ygeoneigh);
-					if(m_debug) cout << "DEBUG\t neighbor gid=" << *neighbor << setprecision(8) << " at xgeo=" << xgeoneigh << " ygeo=" << ygeoneigh << '\n';
+					if(m_debugCellMaps) cout << "DEBUG\t neighbor gid=" << *neighbor << setprecision(8) << " at xgeo=" << xgeoneigh << " ygeo=" << ygeoneigh << '\n';
 
 					// convert them to cells
 					unsigned short xcellneigh=0, ycellneigh=0;
 					determineCellFromWGS84(xgeoneigh,ygeoneigh,xcellneigh,ycellneigh);
-					if(m_debug) cout << "DEBUG\t neighbor gid=" << *neighbor << " cell coords as xcell=" << xcellneigh << "\t ycell=" << ycellneigh << '\n';
+					if(m_debugCellMaps) cout << "DEBUG\t neighbor gid=" << *neighbor << " cell coords as xcell=" << xcellneigh << "\t ycell=" << ycellneigh << '\n';
 
 					// determine LOS status
 					bool LOSneigh = GIS_isLineOfSight(conn,iterRSU->xgeo,iterRSU->ygeo,xgeoneigh,ygeoneigh);
-					if(m_debug) cout << "DEBUG\t neighbor gid=" << *neighbor << " LOS " << (LOSneigh?"true":"false") << '\n';
+					if(m_debugCellMaps) cout << "DEBUG\t neighbor gid=" << *neighbor << " LOS " << (LOSneigh?"true":"false") << '\n';
 
 					// determine signal quality
 					unsigned short signalneigh = getSignalQuality(distneigh,LOSneigh);
-					if(m_debug) cout << "DEBUG\t neighbor gid=" << *neighbor << " signal " << signalneigh << '\n';
+					if(m_debugCellMaps) cout << "DEBUG\t neighbor gid=" << *neighbor << " signal " << signalneigh << '\n';
 
 					// update RSU coverage map
 					short xrelative = PARKEDCELLRANGE + xcellneigh - iterRSU->xcell;
 					short yrelative = PARKEDCELLRANGE + ycellneigh - iterRSU->ycell;
 					iterRSU->coverage[xrelative][yrelative]=signalneigh;
-					if(m_debug) cout << "DEBUG\t neighbor gid=" << *neighbor << " on RSU map at xcell=" << xrelative << " ycell=" << yrelative << '\n';
+					if(m_debugCellMaps) cout << "DEBUG\t neighbor gid=" << *neighbor << " on RSU map at xcell=" << xrelative << " ycell=" << yrelative << '\n';
 
 				}	// end distance!=0
 			}	// end for(RSU neighbors)
@@ -317,7 +340,7 @@ int main(int argc, char *argv[])
 			// Create an accident in the middle of the map
 			// Locate a random vehicle at the center of the map to be the accident source
 			// Get a specific vehicle to act as the accident source
-			if(iterTime->time==m_accidentTime) // TODO CLI
+			if(iterTime->time==m_accidentTime)
 			{
 				// Locate a vehicle. Map center is at YCENTER XCENTER
 				// we begin with a range of 8, and keep doubling it until one vehicle is found
