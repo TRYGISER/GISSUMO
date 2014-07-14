@@ -116,6 +116,8 @@ public:
 };
 
 
+/* Packet. Network layer.
+ */
 struct Packet
 {
 	unsigned short packetSrc=0;
@@ -124,61 +126,53 @@ struct Packet
 };
 
 
-class RSU {
+/* Elementary road object with a radio, a physical presence, and coordinates.
+ */
+class RoadObject {
 public:
+	enum RoadObjectType {VEHICLE, RSU};
+
+	// Characteristics and identifiers
+	RoadObjectType type;	// the type of this entity
 	unsigned short id;		// numeric identifier
 	unsigned short gid;		// GIS numeric identifier
 	bool active;			// active status
+
+	// Location and cells
 	unsigned short xcell;	// x,y position in a cell map
 	unsigned short ycell;
 	float xgeo;				// x,y geographic position
 	float ygeo;
-	array< array<unsigned short,PARKEDCELLCOVERAGE>,PARKEDCELLCOVERAGE > coverage;	// coverage map, vehicle is at center cell
+
+	// Network layer
 	Packet packet;		// store a single packet for now
-//	vector<Packet> p_buffer;	// packet storage
-
-	// this initialization takes ID and geographic coordinates, and completes the cell coordinates automatically
-	RSU(unsigned short iid, float xx, float yy)
-	{
-		id=iid; gid=0;
-		active = false;
-		xcell=0; ycell=0;
-		xgeo=xx; ygeo=yy;
-		determineCellFromWGS84(xgeo,ygeo,xcell,ycell);
-		for(int i=0; i<PARKEDCELLCOVERAGE; i++) coverage[i].fill(0);
-	}
-
-	RSU()
-	{
-		id=0; gid=0;
-		active = false;
-		xcell=0; ycell=0;
-		xgeo=0; ygeo=0;
-		for(int i=0; i<PARKEDCELLCOVERAGE; i++) coverage[i].fill(0);
-	}
 };
 
 
-struct Vehicle
-{
-	unsigned short id=0;	// SUMO identifier
-	unsigned short gid=0;	// GIS identifier
-	bool parked=false;		// Parked status
-	bool rsu=false;			// Vehicle acting as an RSU
-	bool uplink=false;		// Vehicle has an uplink for fast message dissemination
-	bool active=false;		// Status, various uses
-	bool scf=false;			// Store-carry-forward task assigned
-
-	unsigned short xcell=0;	// x,y position in a cell map
-	unsigned short ycell=0;
-	float xgeo=0;				// x,y geographic position
-	float ygeo=0;
-
-	float speed = 0;
-	Packet packet;		// store a single packet for now
-//	vector<Packet> p_buffer;	// packet storage
+/* Vehicle. Can move, park, and be selected by UVCAST.
+ */
+class Vehicle : public RoadObject {
+public:
+	bool parked;	// Parking status
+	bool scf;		// Store-carry-forward task
+	float speed;	// Vehicle speed
 };
 
+
+/* RSU. Features a coverage map.
+ */
+class RSU : public RoadObject {
+public:
+	// Coverage map, RSU is at the center cell
+	array< array<unsigned short,PARKEDCELLCOVERAGE>,PARKEDCELLCOVERAGE > coverage;
+
+	// Initialize the coverage map on creation
+	RSU() { for(int i=0; i<PARKEDCELLCOVERAGE; i++) coverage[i].fill(0); }
+};
+
+
+/* A timestep with a list of vehicles, for reading XML FCD data into.
+ */
 struct Timestep
 {
 	float time = 0;
