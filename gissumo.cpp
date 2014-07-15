@@ -131,6 +131,8 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	if(m_debug) cout << "Read " << fcd_output.size() << " records from " << m_fcdFile << endl;
+
 	/* Open a connection to PostgreSQL
 	 * A password can be added to this string.
 	 */
@@ -155,6 +157,7 @@ int main(int argc, char *argv[])
 
 	if(m_rsu)
 	{
+		if(m_debug) cout << "DEBUG Adding static RSUs...";
 		// Add an RSU
 		// Bottom left
 		addNewRSU(conn, rsuList, 10000, -8.619278, 41.162600, true);
@@ -164,14 +167,15 @@ int main(int argc, char *argv[])
 		addNewRSU(conn, rsuList, 10002, -8.614507, 41.166282, true);
 		// Top left
 		addNewRSU(conn, rsuList, 10003, -8.620375, 41.165852, true);
-		// North
-		addNewRSU(conn, rsuList, 10004, -8.617054, 41.167548, true);
-		// East
-		addNewRSU(conn, rsuList, 10005, -8.614909, 41.164852, true);
-		// South
-		addNewRSU(conn, rsuList, 10006, -8.617476, 41.163523, true);
-		// West
-		addNewRSU(conn, rsuList, 10007, -8.620539, 41.164816, true);
+//		// North
+//		addNewRSU(conn, rsuList, 10004, -8.617054, 41.167548, true);
+//		// East
+//		addNewRSU(conn, rsuList, 10005, -8.614909, 41.164852, true);
+//		// South
+//		addNewRSU(conn, rsuList, 10006, -8.617476, 41.163523, true);
+//		// West
+//		addNewRSU(conn, rsuList, 10007, -8.620539, 41.164816, true);
+		if(m_debug) cout << "done" << endl;
 	}
 
 //	vector<unsigned short> neighList = GIS_getPointsInRange(conn,testRSU.xgeo,testRSU.ygeo,100);
@@ -282,10 +286,10 @@ int main(int argc, char *argv[])
 			iterRSU++)
 		{
 			// first get the RSU's neighbors' GIDs
-			vector<unsigned short> rsuNeighs = GIS_getPointsInRange(conn,iterRSU->xgeo,iterRSU->ygeo,MAXRANGE);
+			vector<unsigned int> rsuNeighs = GIS_getPointsInRange(conn,iterRSU->xgeo,iterRSU->ygeo,MAXRANGE);
 
 			// now run through each neighbor
-			for(vector<unsigned short>::iterator neighbor=rsuNeighs.begin();
+			for(vector<unsigned int>::iterator neighbor=rsuNeighs.begin();
 					neighbor != rsuNeighs.end();
 					neighbor++)
 			{

@@ -135,7 +135,7 @@ public:
 	// Characteristics and identifiers
 	RoadObjectType type;	// the type of this entity
 	unsigned short id;		// numeric identifier
-	unsigned short gid;		// GIS numeric identifier
+	unsigned int gid;		// GIS numeric identifier
 	bool active;			// active status
 
 	// Location and cells

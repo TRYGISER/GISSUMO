@@ -1,6 +1,6 @@
 #include "gis.h"
 
-void GIS_getPointCoords(pqxx::connection &c, unsigned short gid, float &xgeo, float &ygeo)
+void GIS_getPointCoords(pqxx::connection &c, unsigned int gid, float &xgeo, float &ygeo)
 {
 	pqxx::work txn(c);
 	pqxx::result r = txn.exec(
@@ -15,7 +15,7 @@ void GIS_getPointCoords(pqxx::connection &c, unsigned short gid, float &xgeo, fl
 }
 
 
-vector<unsigned short> GIS_getPointsInRange(pqxx::connection &c, float xcenter, float ycenter, unsigned short range)
+vector<unsigned int> GIS_getPointsInRange(pqxx::connection &c, float xcenter, float ycenter, unsigned short range)
 {
 	float wgs84range = range*METERSTODEGREES;
 
@@ -31,15 +31,17 @@ vector<unsigned short> GIS_getPointsInRange(pqxx::connection &c, float xcenter, 
 	);
 	txn.commit();
 
-	vector<unsigned short> neighbors;
+	vector<unsigned int> neighbors;
 
 	for(pqxx::result::iterator iter=r.begin(); iter != r.end(); iter++)
-		neighbors.push_back(iter[0].as<unsigned short>());
+	{
+		neighbors.push_back(iter[0].as<unsigned int>());
+	}
 
 	return neighbors;
 }
 
-unsigned short GIS_distanceToPointGID(pqxx::connection &c, float xx, float yy, unsigned short targetgid)
+unsigned short GIS_distanceToPointGID(pqxx::connection &c, float xx, float yy, unsigned int targetgid)
 {
 	// first get the target point as WKT
 	pqxx::work txn1(c);
@@ -99,7 +101,7 @@ bool GIS_isPointObstructed(pqxx::connection &c, float xx, float yy)
 	if(r[0][0].as<int>() > 0) return 1; else return 0;
 }
 
-unsigned short GIS_addPoint(pqxx::connection &c, float xx, float yy, unsigned short id)
+unsigned int GIS_addPoint(pqxx::connection &c, float xx, float yy, unsigned short id)
 {
 	pqxx::work txnInsert(c);
 	pqxx::result r = txnInsert.exec(
@@ -112,10 +114,10 @@ unsigned short GIS_addPoint(pqxx::connection &c, float xx, float yy, unsigned sh
 		);
 	txnInsert.commit();
 
-	return r[0][0].as<int>();
+	return r[0][0].as<unsigned int>();
 }
 
-void GIS_updatePoint(pqxx::connection &c, float xx, float yy, unsigned short gid)
+void GIS_updatePoint(pqxx::connection &c, float xx, float yy, unsigned int gid)
 {
 	pqxx::work txnUpdate(c);
 	txnUpdate.exec(
@@ -164,7 +166,7 @@ vector<Vehicle*> getVehiclesInRange(pqxx::connection &conn, list<Vehicle> &vehic
 	 * Note that vehiclesOnGIS does not have RSUs.
 	 */
 	vector<Vehicle*> neighbors;
-	vector<unsigned short> GISneighbors;
+	vector<unsigned int> GISneighbors;
 
 	// Step 1
 	GISneighbors = GIS_getPointsInRange(conn,src.xgeo,src.ygeo,MAXRANGE);
@@ -172,7 +174,7 @@ vector<Vehicle*> getVehiclesInRange(pqxx::connection &conn, list<Vehicle> &vehic
 
 
 	// Step 2
-	for(vector<unsigned short>::iterator iter=GISneighbors.begin(); iter != GISneighbors.end(); iter++)
+	for(vector<unsigned int>::iterator iter=GISneighbors.begin(); iter != GISneighbors.end(); iter++)
 	{
 		// find the vehicle by *iter
 		list<Vehicle>::iterator iterVehicle = find_if(
@@ -216,13 +218,13 @@ vector<Vehicle*> getVehiclesNearPoint(pqxx::connection &conn, list<Vehicle> &veh
 	 * Note that vehiclesOnGIS does not have RSUs.
 	 */
 	vector<Vehicle*> neighbors;
-	vector<unsigned short> GISneighbors;
+	vector<unsigned int> GISneighbors;
 
 	// Step 1
 	GISneighbors = GIS_getPointsInRange(conn,xgeo,ygeo,range);
 
 	// Step 2
-	for(vector<unsigned short>::iterator iter=GISneighbors.begin(); iter != GISneighbors.end(); iter++)
+	for(vector<unsigned int>::iterator iter=GISneighbors.begin(); iter != GISneighbors.end(); iter++)
 	{
 		// find the vehicle by *iter
 		list<Vehicle>::iterator iterVehicle = find_if(
@@ -257,7 +259,7 @@ vector<RSU*> getRSUsInRange(pqxx::connection &conn, list<RSU> &rsuList, const Ro
 	 * Step 4: trim based on signal strength (<2 drop)
 	 */
 	vector<RSU*> RSUneighbors;
-	vector<unsigned short> GISneighbors;
+	vector<unsigned int> GISneighbors;
 
 	// Step 1
 	GISneighbors = GIS_getPointsInRange(conn,src.xgeo,src.ygeo,MAXRANGE);
@@ -265,7 +267,7 @@ vector<RSU*> getRSUsInRange(pqxx::connection &conn, list<RSU> &rsuList, const Ro
 
 
 	// Step 2
-	for(vector<unsigned short>::iterator iter=GISneighbors.begin(); iter != GISneighbors.end(); iter++)
+	for(vector<unsigned int>::iterator iter=GISneighbors.begin(); iter != GISneighbors.end(); iter++)
 	{
 		// find the vehicle by *iter
 		list<RSU>::iterator iterRSU = find_if(
