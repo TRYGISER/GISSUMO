@@ -178,12 +178,6 @@ int main(int argc, char *argv[])
 		if(m_debug) cout << "done" << endl;
 	}
 
-//	vector<unsigned short> neighList = GIS_getPointsInRange(conn,testRSU.xgeo,testRSU.ygeo,100);
-//	unsigned short distTest = GIS_distanceToPointGID(conn,-8.6160498,41.165799,testRSU.gid);
-//	for(vector<unsigned short>::iterator iter=neighList.begin(); iter!=neighList.end(); iter++)
-//		cout << "\tNeighbor gid: " << *iter << '\n';
-
-
 
 	// Run through every time step on the FCD XML file
 	for(std::vector<Timestep>::iterator
@@ -590,7 +584,6 @@ void printVehicleDetails(Vehicle veh)
 			<< "\n\t xgeo " << veh.xgeo
 			<< " ygeo " << veh.ygeo
 			<< "\n\t speed " << veh.speed
-//			<< " packets " << veh.p_buffer.size()
 			<< " packetID " << veh.packet.packetID
 			<< " packetSrc " << veh.packet.packetSrc
 			<< '\n';
