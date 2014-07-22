@@ -6,7 +6,7 @@ CXXFLAGS=-c -O2 -std=c++11 -Wall --pedantic
 LDFLAGS=-O2
 
 SOURCES=gissumo.cpp gis.cpp network.cpp uvcast.cpp
-EXECUTABLE=gissumo
+EXECUTABLE=rsu-coverage
 OBJECTS=$(SOURCES:.cpp=.o)
 
 INCLUDEDIRS=-I/usr/local/include
