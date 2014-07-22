@@ -15,7 +15,7 @@ void GIS_getPointCoords(pqxx::connection &c, unsigned int gid, float &xgeo, floa
 }
 
 
-vector<unsigned int> GIS_getPointsInRange(pqxx::connection &c, float xcenter, float ycenter, unsigned short range)
+vector<unsigned int> GIS_getPointsInRange(pqxx::connection &c, float xcenter, float ycenter, unsigned short range, unsigned short feattyp)
 {
 	float wgs84range = range*METERSTODEGREES;
 
@@ -27,7 +27,7 @@ vector<unsigned int> GIS_getPointsInRange(pqxx::connection &c, float xcenter, fl
 			+ pqxx::to_string(xcenter) + " "
 			+ pqxx::to_string(ycenter) + ")',4326)"
 			+ "," + pqxx::to_string(wgs84range) + ")"
-			+ " and feattyp='2222'"
+			+ " and feattyp='" + pqxx::to_string(feattyp) + "'"
 	);
 	txn.commit();
 
@@ -78,7 +78,8 @@ bool GIS_isLineOfSight (pqxx::connection &c, float x1, float y1, float x2, float
 			+ pqxx::to_string(x1) + " "
 			+ pqxx::to_string(y1) + ","
 			+ pqxx::to_string(x2) + " "
-			+ pqxx::to_string(y2) + ")',4326)) and feattyp='9790'"
+			+ pqxx::to_string(y2) + ")',4326)) and feattyp='"
+			+ pqxx::to_string(BLD_FEATTYP) + "'"
 	);
 	txn.commit();
 
@@ -101,7 +102,7 @@ bool GIS_isPointObstructed(pqxx::connection &c, float xx, float yy)
 	if(r[0][0].as<int>() > 0) return 1; else return 0;
 }
 
-unsigned int GIS_addPoint(pqxx::connection &c, float xx, float yy, unsigned short id)
+unsigned int GIS_addPoint(pqxx::connection &c, float xx, float yy, unsigned short id, unsigned short feattyp)
 {
 	pqxx::work txnInsert(c);
 	pqxx::result r = txnInsert.exec(
@@ -110,7 +111,8 @@ unsigned int GIS_addPoint(pqxx::connection &c, float xx, float yy, unsigned shor
 				+ pqxx::to_string(id)
 				+ ", ST_GeomFromText('POINT("
 				+ pqxx::to_string(xx) + " "
-				+ pqxx::to_string(yy) + ")',4326), 2222) RETURNING gid"
+				+ pqxx::to_string(yy) + ")',4326), "
+				+ pqxx::to_string(feattyp) + ") RETURNING gid"
 		);
 	txnInsert.commit();
 
@@ -130,10 +132,10 @@ void GIS_updatePoint(pqxx::connection &c, float xx, float yy, unsigned int gid)
 }
 
 
-void GIS_clearAllPoints(pqxx::connection &c)
+void GIS_clearAllPoints(pqxx::connection &c, unsigned short feattyp)
 {
 	pqxx::work txn(c);
-	txn.exec( "DELETE FROM edificios WHERE feattyp='2222'");
+	txn.exec( "DELETE FROM edificios WHERE feattyp='" + pqxx::to_string(feattyp) + "'");
 	txn.commit();
 }
 
@@ -151,7 +153,7 @@ void addNewRSU(pqxx::connection &conn, list<RSU> &rsuList, unsigned short id, fl
 	// get cell coordinates from WGS84
 	determineCellFromWGS84(testRSU.xgeo,testRSU.ygeo,testRSU.xcell,testRSU.ycell);
 	// add RSU to GIS and get GIS unique id (gid)
-	testRSU.gid = GIS_addPoint(conn,testRSU.xgeo,testRSU.ygeo,testRSU.id);
+	testRSU.gid = GIS_addPoint(conn,testRSU.xgeo,testRSU.ygeo,testRSU.id, RSU_FEATTYP);
 	// add RSU to list of RSUs
 	rsuList.push_back(testRSU);
 }
@@ -169,7 +171,7 @@ vector<Vehicle*> getVehiclesInRange(pqxx::connection &conn, list<Vehicle> &vehic
 	vector<unsigned int> GISneighbors;
 
 	// Step 1
-	GISneighbors = GIS_getPointsInRange(conn,src.xgeo,src.ygeo,MAXRANGE);
+	GISneighbors = GIS_getPointsInRange(conn,src.xgeo,src.ygeo,MAXRANGE,CAR_FEATTYP);
 	GISneighbors.erase(std::remove(GISneighbors.begin(), GISneighbors.end(), src.gid), GISneighbors.end() ); // drop ourselves from the list
 
 
@@ -221,7 +223,7 @@ vector<Vehicle*> getVehiclesNearPoint(pqxx::connection &conn, list<Vehicle> &veh
 	vector<unsigned int> GISneighbors;
 
 	// Step 1
-	GISneighbors = GIS_getPointsInRange(conn,xgeo,ygeo,range);
+	GISneighbors = GIS_getPointsInRange(conn,xgeo,ygeo,range,CAR_FEATTYP);
 
 	// Step 2
 	for(vector<unsigned int>::iterator iter=GISneighbors.begin(); iter != GISneighbors.end(); iter++)
@@ -262,7 +264,7 @@ vector<RSU*> getRSUsInRange(pqxx::connection &conn, list<RSU> &rsuList, const Ro
 	vector<unsigned int> GISneighbors;
 
 	// Step 1
-	GISneighbors = GIS_getPointsInRange(conn,src.xgeo,src.ygeo,MAXRANGE);
+	GISneighbors = GIS_getPointsInRange(conn,src.xgeo,src.ygeo,MAXRANGE,RSU_FEATTYP);
 	GISneighbors.erase(std::remove(GISneighbors.begin(), GISneighbors.end(), src.gid), GISneighbors.end() ); // drop ourselves from the list
 
 

@@ -8,7 +8,7 @@ extern bool m_debug;
 void GIS_getPointCoords(pqxx::connection &c, unsigned int gid, float &xgeo, float &ygeo);
 
 // Returns the GIDs of all points in a given range of a given point.
-vector<unsigned int> GIS_getPointsInRange(pqxx::connection &c, float xcenter, float ycenter, unsigned short range);
+vector<unsigned int> GIS_getPointsInRange(pqxx::connection &c, float xcenter, float ycenter, unsigned short range, unsigned short feattyp);
 
 // Returns the distance from a set of coordinates to a given point by GID.
 unsigned short GIS_distanceToPointGID(pqxx::connection &c, float xx, float yy, unsigned int targetgid);
@@ -19,14 +19,14 @@ bool GIS_isLineOfSight(pqxx::connection &c, float x1, float y1, float x2, float 
 // Returns true if the point at (xx,yy) is intersecting with something.
 bool GIS_isPointObstructed(pqxx::connection &c, float xx, float yy);
 
-// Adds a new point to the database. Returns the unique identifier 'gid'. Sets 'feattype' to 2222.
-unsigned int GIS_addPoint(pqxx::connection &c, float xx, float yy, unsigned short id);
+// Adds a new point to the database. Returns the unique identifier 'gid'. See gissumo.h for feattyp.
+unsigned int GIS_addPoint(pqxx::connection &c, float xx, float yy, unsigned short id, unsigned short feattyp);
 
 // Updates the coordinates of a point via GID.
 void GIS_updatePoint(pqxx::connection &c, float xx, float yy, unsigned int gid);
 
 // Removes all POINTs from the database (feattyp 2222).
-void GIS_clearAllPoints(pqxx::connection &c);
+void GIS_clearAllPoints(pqxx::connection &c, unsigned short feattyp);
 
 // Adds an RSU to the database and GIS.
 void addNewRSU(pqxx::connection &conn, std::list<RSU> &rsuList, unsigned short id, float xgeo, float ygeo, bool active);

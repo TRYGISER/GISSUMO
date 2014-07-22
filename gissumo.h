@@ -62,6 +62,11 @@ using namespace boost::program_options;
 // Emergency message code
 #define EMERGENCYID 31337
 
+// GIS feattyp codes
+#define CAR_FEATTYP 2222	// Vehicle
+#define RSU_FEATTYP 2223	// RSU
+#define BLD_FEATTYP 9790	// Building
+
 /* Functions
    --------- */
 

@@ -139,7 +139,8 @@ int main(int argc, char *argv[])
 	pqxx::connection conn("dbname=shapefiledb user=abreis");
 
 	// Clear all POINT entities from the database from past simulations.
-	GIS_clearAllPoints(conn);
+	GIS_clearAllPoints(conn, CAR_FEATTYP);
+	GIS_clearAllPoints(conn, RSU_FEATTYP);
 
 	/* Simulation starts here.
 	 * We have a 0.37% mismatch error between the SUMO roads and the Porto shapefile data.
@@ -229,7 +230,7 @@ int main(int argc, char *argv[])
 			if(iterVehicleOnGIS==vehiclesOnGIS.end())
 			{
 				// 2a - New vehicle. Add it to GIS, get GID, add to our local record.
-				newVehicle.gid = GIS_addPoint(conn,newVehicle.xgeo,newVehicle.ygeo,newVehicle.id);
+				newVehicle.gid = GIS_addPoint(conn,newVehicle.xgeo,newVehicle.ygeo,newVehicle.id, CAR_FEATTYP);
 				// Mark as active
 				newVehicle.active=true;
 				// Add to our local record
@@ -280,7 +281,7 @@ int main(int argc, char *argv[])
 			iterRSU++)
 		{
 			// first get the RSU's neighbors' GIDs
-			vector<unsigned int> rsuNeighs = GIS_getPointsInRange(conn,iterRSU->xgeo,iterRSU->ygeo,MAXRANGE);
+			vector<unsigned int> rsuNeighs = GIS_getPointsInRange(conn,iterRSU->xgeo,iterRSU->ygeo,MAXRANGE,CAR_FEATTYP);
 
 			// now run through each neighbor
 			for(vector<unsigned int>::iterator neighbor=rsuNeighs.begin();
