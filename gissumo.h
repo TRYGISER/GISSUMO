@@ -5,7 +5,9 @@
 #include <string>
 #include <vector>
 #include <array>
+#include <set>
 #include <cmath>
+#include <functional>
 
 #include <pqxx/pqxx>
 #include <boost/foreach.hpp>
@@ -185,6 +187,50 @@ struct Timestep
 };
 
 
+/* Time-triggered event callbacks.
+ */
+class Event{
+public:
+	float time;
+	std::function< void() > callback;
+
+	bool operator < (const Event& evnt) const
+		{ return (time < evnt.time); }
+};
+
+class EventList{
+public:
+	/* Add an event to the list of events. Sets are always sorted.
+	 */
+	void addEvent(float t, std::function<void()> c)
+	{
+		// create event
+		Event newEvent; newEvent.time=t; newEvent.callback=c;
+		// add event to eventlist
+		list.insert(newEvent);
+	}
+
+	/* Executes the next event, pulls it from the eventlist.
+	 * Supply the current time to the function.
+	 * Returns 0 if there's no more events to process.
+	 */
+	unsigned short doNextEvent(float t)
+	{
+		// assume the event list is sorted
+		for(set<Event>::iterator iter=list.begin(); iter!=list.end(); iter++)
+			if(iter->time <= t)
+			{
+				// execute event, drop if from the list
+				iter->callback();
+				list.erase(iter);
+				return 1;
+			}
+		return 0;
+	}
+
+private:
+	set<Event> list;
+};
 
 
 

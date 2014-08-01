@@ -3,6 +3,12 @@
 #include "network.h"
 #include "uvcast.h"
 
+/*
+ * TODO Implement time-based events
+ * TODO Implement callbacks
+ * TODO RSUs callback after coverage map is completed
+ */
+
 #define XML_PATH "./fcdoutput.xml"
 
 const ptree& empty_ptree(){
@@ -155,6 +161,8 @@ int main(int argc, char *argv[])
 	CityMapChar vehicleLocations; 		// 2D map for vehicle locations
 	CityMapNum globalSignal;			// 2D map for global signal quality
 
+	// list of events
+	EventList events;
 
 	if(m_rsu)
 	{
