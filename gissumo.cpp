@@ -6,10 +6,9 @@
 /*
  * TODO Implement time-based events
  * TODO Implement callbacks
- * TODO RSUs callback after coverage map is completed
+ * TODO RSUs rerun decision algorithm on (time elapsed / coverage map changed)
  */
 
-#define XML_PATH "./fcdoutput.xml"
 
 const ptree& empty_ptree(){
     static ptree t;
@@ -41,6 +40,7 @@ int main(int argc, char *argv[])
 	unsigned short m_accidentTime=60;
 	unsigned short m_stopTime=0;
 	string m_fcdFile = "./fcdoutput.xml";
+	string m_rsuFile = "./rsudata.tsv";
 	unsigned short m_pause = 0;
 
 	// List of command line options
@@ -57,6 +57,7 @@ int main(int argc, char *argv[])
 		("stop-time", boost::program_options::value<unsigned short>(), "stops the simulation at a specific time")
 		("pause", boost::program_options::value<unsigned short>(), "pauses for N milliseconds after every timestep")
 		("fcd-data", boost::program_options::value<string>(), "floating car data file location")
+		("rsu-data", boost::program_options::value<string>(), "tab-separated file with x,y coordinates of RSUs")
 	    ("debug", "enable debug mode")
 	    ("debug-locations", "debug vehicle location updates")
 	    ("debug-cell-maps", "debug cell map updates")
@@ -85,6 +86,7 @@ int main(int argc, char *argv[])
 	if (varMap.count("check-valid-vehicles"))	m_validVehicle=true;
 	if (varMap.count("pause"))					m_pause=varMap["pause"].as<unsigned short>();
 	if (varMap.count("fcd-data"))				m_fcdFile=varMap["fcd-data"].as<string>();
+	if (varMap.count("rsu-data"))				m_fcdFile=varMap["rsu-data"].as<string>();
 	if (varMap.count("help")) 					{ cout << cliOptDesc; return 1; }
 
 	if (m_debug) cout << "BEGIN FCD FILE " << m_fcdFile << endl;
@@ -166,25 +168,25 @@ int main(int argc, char *argv[])
 
 	if(m_rsu)
 	{
-		if(m_debug) cout << "DEBUG Adding static RSUs...";
-		// Add an RSU
-		// Bottom left
-		addNewRSU(conn, rsuList, 10000, -8.619278, 41.162600, true);
-		// Bottom right
-		addNewRSU(conn, rsuList, 10001, -8.614409, 41.162411, true);
-		// Top right
-		addNewRSU(conn, rsuList, 10002, -8.614507, 41.166282, true);
-		// Top left
-		addNewRSU(conn, rsuList, 10003, -8.620375, 41.165852, true);
-//		// North
-//		addNewRSU(conn, rsuList, 10004, -8.617054, 41.167548, true);
-//		// East
-//		addNewRSU(conn, rsuList, 10005, -8.614909, 41.164852, true);
-//		// South
-//		addNewRSU(conn, rsuList, 10006, -8.617476, 41.163523, true);
-//		// West
-//		addNewRSU(conn, rsuList, 10007, -8.620539, 41.164816, true);
-		if(m_debug) cout << "done" << endl;
+		// import RSU locations from m_rsuFile, tab-separated [x,y] coordinates
+
+		std::ifstream inFile(m_rsuFile);
+		if(m_debug) cout << "Adding RSUs from " << m_rsuFile << endl;
+
+		short rsuIDcounter = 10000;
+		while(inFile)
+		{
+			string tsvX, tsvY;
+			inFile >> tsvX; inFile >> tsvY;
+			if(tsvX!="" && tsvY!="")
+			{
+				float xgeo = std::stof(tsvX);
+				float ygeo = std::stof(tsvY);
+
+				addNewRSU(conn, rsuList, ++rsuIDcounter, xgeo, ygeo, true);
+				if(m_debug) cout << "\tLoaded RSU " << rsuIDcounter << " on " << xgeo << '\t' << ygeo << endl;
+			}
+		}
 	}
 
 
@@ -335,6 +337,7 @@ int main(int argc, char *argv[])
 			applyCoverageToCityMap(*iterRSU, globalSignal);
 
 		}	// end for(RSUs)
+
 
 		/* Network layer.
 		 * Act on vehiclesOnGIS and rsuList, and disseminate packets.
