@@ -286,57 +286,85 @@ int main(int argc, char *argv[])
 		/* Go through each RSU and update its coverage map.
 		 * This is computed from the vehicles the RSU sees, and their signal strength.
 		 */
-		for(list<RSU>::iterator iterRSU = rsuList.begin();
-			iterRSU != rsuList.end();
-			iterRSU++)
-		{
-			// first get the RSU's neighbors' GIDs
-			vector<unsigned int> rsuNeighs = GIS_getPointsInRange(conn,iterRSU->xgeo,iterRSU->ygeo,MAXRANGE,CAR_FEATTYP);
-
-			// now run through each neighbor
-			for(vector<unsigned int>::iterator neighbor=rsuNeighs.begin();
-					neighbor != rsuNeighs.end();
-					neighbor++)
+		if(m_rsu)
+			for(list<RSU>::iterator iterRSU = rsuList.begin();
+				iterRSU != rsuList.end();
+				iterRSU++)
 			{
-				// get distance from neighbor to RSU
-				unsigned short distneigh = GIS_distanceToPointGID(conn,iterRSU->xgeo,iterRSU->ygeo,*neighbor);
+				// first get the RSU's neighbors' GIDs
+				vector<unsigned int> rsuNeighs = GIS_getPointsInRange(conn,iterRSU->xgeo,iterRSU->ygeo,MAXRANGE,CAR_FEATTYP);
 
-				if(distneigh)	// ignore ourselves (distance==0)
+				// now run through each neighbor
+				for(vector<unsigned int>::iterator neighbor=rsuNeighs.begin();
+						neighbor != rsuNeighs.end();
+						neighbor++)
 				{
-					// carry debug
-					if(m_debugCellMaps) cout << "DEBUG\t neighbor gid=" << *neighbor << " distance " << distneigh << '\n';
+					// get distance from neighbor to RSU
+					unsigned short distneigh = GIS_distanceToPointGID(conn,iterRSU->xgeo,iterRSU->ygeo,*neighbor);
 
-					// get the neighbor's coordinates
-					float xgeoneigh=0, ygeoneigh=0;
-					GIS_getPointCoords(conn, *neighbor, xgeoneigh, ygeoneigh);
-					if(m_debugCellMaps) cout << "DEBUG\t neighbor gid=" << *neighbor << setprecision(8) << " at xgeo=" << xgeoneigh << " ygeo=" << ygeoneigh << '\n';
+					if(distneigh)	// ignore ourselves (distance==0)
+					{
+						// carry debug
+						if(m_debugCellMaps) cout << "DEBUG\t neighbor gid=" << *neighbor << " distance " << distneigh << '\n';
 
-					// convert them to cells
-					unsigned short xcellneigh=0, ycellneigh=0;
-					determineCellFromWGS84(xgeoneigh,ygeoneigh,xcellneigh,ycellneigh);
-					if(m_debugCellMaps) cout << "DEBUG\t neighbor gid=" << *neighbor << " cell coords as xcell=" << xcellneigh << "\t ycell=" << ycellneigh << '\n';
+						// get the neighbor's coordinates
+						float xgeoneigh=0, ygeoneigh=0;
+						GIS_getPointCoords(conn, *neighbor, xgeoneigh, ygeoneigh);
+						if(m_debugCellMaps) cout << "DEBUG\t neighbor gid=" << *neighbor << setprecision(8) << " at xgeo=" << xgeoneigh << " ygeo=" << ygeoneigh << '\n';
 
-					// determine LOS status
-					bool LOSneigh = GIS_isLineOfSight(conn,iterRSU->xgeo,iterRSU->ygeo,xgeoneigh,ygeoneigh);
-					if(m_debugCellMaps) cout << "DEBUG\t neighbor gid=" << *neighbor << " LOS " << (LOSneigh?"true":"false") << '\n';
+						// convert them to cells
+						unsigned short xcellneigh=0, ycellneigh=0;
+						determineCellFromWGS84(xgeoneigh,ygeoneigh,xcellneigh,ycellneigh);
+						if(m_debugCellMaps) cout << "DEBUG\t neighbor gid=" << *neighbor << " cell coords as xcell=" << xcellneigh << "\t ycell=" << ycellneigh << '\n';
 
-					// determine signal quality
-					unsigned short signalneigh = getSignalQuality(distneigh,LOSneigh);
-					if(m_debugCellMaps) cout << "DEBUG\t neighbor gid=" << *neighbor << " signal " << signalneigh << '\n';
+						// determine LOS status
+						bool LOSneigh = GIS_isLineOfSight(conn,iterRSU->xgeo,iterRSU->ygeo,xgeoneigh,ygeoneigh);
+						if(m_debugCellMaps) cout << "DEBUG\t neighbor gid=" << *neighbor << " LOS " << (LOSneigh?"true":"false") << '\n';
 
-					// update RSU coverage map
-					short xrelative = PARKEDCELLRANGE + xcellneigh - iterRSU->xcell;
-					short yrelative = PARKEDCELLRANGE + ycellneigh - iterRSU->ycell;
-					iterRSU->coverage.map[xrelative][yrelative]=signalneigh;
-					if(m_debugCellMaps) cout << "DEBUG\t neighbor gid=" << *neighbor << " on RSU map at xcell=" << xrelative << " ycell=" << yrelative << '\n';
+						// determine signal quality
+						unsigned short signalneigh = getSignalQuality(distneigh,LOSneigh);
+						if(m_debugCellMaps) cout << "DEBUG\t neighbor gid=" << *neighbor << " signal " << signalneigh << '\n';
 
-				}	// end distance!=0
-			}	// end for(RSU neighbors)
+						// update RSU coverage map
+						short xrelative = PARKEDCELLRANGE + xcellneigh - iterRSU->xcell;
+						short yrelative = PARKEDCELLRANGE + ycellneigh - iterRSU->ycell;
+						iterRSU->coverage.map[xrelative][yrelative]=signalneigh;
+						if(m_debugCellMaps) cout << "DEBUG\t neighbor gid=" << *neighbor << " on RSU map at xcell=" << xrelative << " ycell=" << yrelative << '\n';
 
-			// now that the RSU's local map is updated, apply this map to the global signal map
-			applyCoverageToCityMap(*iterRSU, globalSignal);
+					}	// end distance!=0
+				}	// end for(RSU neighbors)
 
-		}	// end for(RSUs)
+				// now that the RSU's local map is updated, apply this map to the global signal map
+				applyCoverageToCityMap(*iterRSU, globalSignal);
+
+			}	// end for(RSUs)
+
+
+		/* Go through each RSU and determine whether to spread its coverage map to its neighbors.
+		 *
+		 */
+		if(m_rsu)
+		{
+			for(list<RSU>::iterator iterRSU = rsuList.begin();
+				iterRSU != rsuList.end();
+				iterRSU++)
+			{
+				if(false)	// TODO
+				{
+					// get the list of RSU neighbors
+					vector<RSU*> neighborRSUs = getRSUsInRange(conn, rsuList, *iterRSU);
+					for(vector<RSU*>::iterator iterNeigh = neighborRSUs.begin();
+						iterNeigh != neighborRSUs.end();
+						iterNeigh++)
+					{
+						// send each neighbor our updated coverage map
+						(*iterNeigh)->neighborMaps[iterRSU->id] = iterRSU->coverage;
+
+					}	// for(neighs)
+				}	// if(false)
+			}	// for(RSUs)
+		}	// if(m_rsu)
+
 
 
 		/* Network layer.
