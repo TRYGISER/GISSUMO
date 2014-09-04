@@ -327,7 +327,7 @@ int main(int argc, char *argv[])
 					// update RSU coverage map
 					short xrelative = PARKEDCELLRANGE + xcellneigh - iterRSU->xcell;
 					short yrelative = PARKEDCELLRANGE + ycellneigh - iterRSU->ycell;
-					iterRSU->coverage[xrelative][yrelative]=signalneigh;
+					iterRSU->coverage.map[xrelative][yrelative]=signalneigh;
 					if(m_debugCellMaps) cout << "DEBUG\t neighbor gid=" << *neighbor << " on RSU map at xcell=" << xrelative << " ycell=" << yrelative << '\n';
 
 				}	// end distance!=0
@@ -570,8 +570,8 @@ void applyCoverageToCityMap (RSU rsu, CityMapNum &city)
 			short mapY=yy+rsu.ycell-PARKEDCELLRANGE;
 
 			// 'upgrade' coverage in a given cell if this RSU can cover it better
-			if(rsu.coverage[xx][yy] > city.map[mapX][mapY])
-				city.map[mapX][mapY] = rsu.coverage[xx][yy];
+			if(rsu.coverage.map[xx][yy] > city.map[mapX][mapY])
+				city.map[mapX][mapY] = rsu.coverage.map[xx][yy];
 		}
 }
 

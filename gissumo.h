@@ -132,6 +132,18 @@ struct Packet
 	float packetTime=0;
 };
 
+/* Coverage map, plus central location.
+ */
+class CoverageMap {
+public:
+	array< array<unsigned short,PARKEDCELLCOVERAGE>,PARKEDCELLCOVERAGE > map;
+	unsigned short xcenter;
+	unsigned short ycenter;
+
+	CoverageMap() {
+		xcenter=0; ycenter=0;
+		for(int i=0; i<PARKEDCELLCOVERAGE; i++) map[i].fill(0); }
+};
 
 /* Elementary road object with a radio, a physical presence, and coordinates.
  */
@@ -166,15 +178,12 @@ public:
 };
 
 
-/* RSU. Features a coverage map.
+/* RSU. Features a coverage map. Stores neighbor RSU's coverage maps.
  */
 class RSU : public RoadObject {
 public:
 	// Coverage map, RSU is at the center cell
-	array< array<unsigned short,PARKEDCELLCOVERAGE>,PARKEDCELLCOVERAGE > coverage;
-
-	// Initialize the coverage map on creation
-	RSU() { for(int i=0; i<PARKEDCELLCOVERAGE; i++) coverage[i].fill(0); }
+	CoverageMap coverage;
 };
 
 
