@@ -91,7 +91,8 @@ class RSU; class CityMapNum;
 void applyCoverageToCityMap(RSU rsu, CityMapNum &city);
 
 // Prints ASCII of a local coverage map.
-void printLocalCoverage(array< array<unsigned short,PARKEDCELLCOVERAGE>,PARKEDCELLCOVERAGE > coverage);
+class CoverageMap;
+void printLocalCoverage(CoverageMap coverage);
 
 // Prints all details of a vehicle.
 struct Vehicle;

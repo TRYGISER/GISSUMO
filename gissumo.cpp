@@ -36,6 +36,7 @@ int main(int argc, char *argv[])
 	bool m_validVehicle = false;
 	bool m_debugLocations = false;
 	bool m_debugCellMaps = false;
+	bool m_debugMapBroadcast = false;
 	bool m_networkEnabled = false;
 	unsigned short m_accidentTime=60;
 	unsigned short m_stopTime=0;
@@ -61,6 +62,7 @@ int main(int argc, char *argv[])
 	    ("debug", "enable debug mode")
 	    ("debug-locations", "debug vehicle location updates")
 	    ("debug-cell-maps", "debug cell map updates")
+	    ("debug-map-broadcast", "debug coverage map broadcasting")
 	    ("help", "give this help list")
 	;
 
@@ -75,6 +77,7 @@ int main(int argc, char *argv[])
 	if (varMap.count("debug")) 					m_debug=true;
 	if (varMap.count("debug-locations")) 		m_debugLocations=true;
 	if (varMap.count("debug-cell-maps")) 		m_debugCellMaps=true;
+	if (varMap.count("debug-map-broadcast")) 	m_debugMapBroadcast=true;
 	if (varMap.count("print-vehicle-map")) 		m_printVehicleMap=true;
 	if (varMap.count("print-signal-map")) 		m_printSignalMap=true;
 	if (varMap.count("print-statistics")) 		m_printStatistics=true;
@@ -86,7 +89,7 @@ int main(int argc, char *argv[])
 	if (varMap.count("check-valid-vehicles"))	m_validVehicle=true;
 	if (varMap.count("pause"))					m_pause=varMap["pause"].as<unsigned short>();
 	if (varMap.count("fcd-data"))				m_fcdFile=varMap["fcd-data"].as<string>();
-	if (varMap.count("rsu-data"))				m_fcdFile=varMap["rsu-data"].as<string>();
+	if (varMap.count("rsu-data"))				m_rsuFile=varMap["rsu-data"].as<string>();
 	if (varMap.count("help")) 					{ cout << cliOptDesc; return 1; }
 
 	if (m_debug) cout << "BEGIN FCD FILE " << m_fcdFile << endl;
@@ -325,15 +328,20 @@ int main(int argc, char *argv[])
 						unsigned short signalneigh = getSignalQuality(distneigh,LOSneigh);
 						if(m_debugCellMaps) cout << "DEBUG\t neighbor gid=" << *neighbor << " signal " << signalneigh << '\n';
 
-						// update RSU coverage map
+						// determine relative positions for local map position
 						short xrelative = PARKEDCELLRANGE + xcellneigh - iterRSU->xcell;
 						short yrelative = PARKEDCELLRANGE + ycellneigh - iterRSU->ycell;
+
+						// only count newly covered cells if coverage goes from 0 to positive
+						if(iterRSU->coverage.map[xrelative][yrelative]==0 && signalneigh)
+							iterRSU->coveredCellCount++;
+						if(m_debugCellMaps) cout << "DEBUG\t RSU id=" << iterRSU->id << " is now covering " << iterRSU->coveredCellCount << " cells" << endl;
+
+						// update RSU coverage map
 						iterRSU->coverage.map[xrelative][yrelative]=signalneigh;
 						if(m_debugCellMaps) cout << "DEBUG\t neighbor gid=" << *neighbor << " on RSU map at xcell=" << xrelative << " ycell=" << yrelative << '\n';
 
 						// increment number of cells this RSU is covering
-						iterRSU->coveredCellCount++;
-						if(m_debugCellMaps) cout << "DEBUG\t RSU id=" << iterRSU->id << " is now covering " << iterRSU->coveredCellCount << " cells" << endl;
 					}	// end distance!=0
 				}	// end for(RSU neighbors)
 
@@ -341,7 +349,7 @@ int main(int argc, char *argv[])
 				// Coverage map broadcast criteria
 				if( (iterRSU->coveredCellCount - iterRSU->coveredCellsOnLastBroadcast) > 5)
 				{
-					if(m_debug) cout << "DEBUG Criteria triggered, marking RSU id=" << iterRSU->id << " for coverage map broadcast" << endl;
+					if(m_debug || m_debugMapBroadcast) cout << "DEBUG Criteria triggered, marking RSU id=" << iterRSU->id << " for coverage map broadcast" << endl;
 					// reset count
 					iterRSU->coveredCellsOnLastBroadcast = iterRSU->coveredCellCount;
 					// update flag
@@ -414,6 +422,30 @@ int main(int argc, char *argv[])
 			}
 		}
 
+		/* Debug coverage map broadcasts.
+		 *
+		 */
+		if(m_debugMapBroadcast)
+		{
+			cout << "DEBUG MAP BCAST " << '\n';
+
+			for(list<RSU>::iterator iterRSU = rsuList.begin();
+				iterRSU != rsuList.end();
+				iterRSU++)
+			{
+				cout << "\tLocal map of RSU id=" << iterRSU->id << '\n';
+				printLocalCoverage(iterRSU->coverage);
+
+				for(map<unsigned short, CoverageMap>::iterator iterNeighMaps = iterRSU->neighborMaps.begin();
+						iterNeighMaps != iterRSU->neighborMaps.end();
+						iterNeighMaps++)
+				{
+					cout << "\t\tRSU id=" << iterRSU->id << " map of neighbor id=" << iterNeighMaps->first << '\n';
+					printLocalCoverage(iterNeighMaps->second);
+				}
+
+			}
+		}
 
 
 		/* Compute and print statistics.
@@ -619,12 +651,12 @@ void applyCoverageToCityMap (RSU rsu, CityMapNum &city)
 		}
 }
 
-void printLocalCoverage(array< array<unsigned short,PARKEDCELLCOVERAGE>,PARKEDCELLCOVERAGE > coverage)
+void printLocalCoverage(CoverageMap coverage)
 {
 	for(short yy=0;yy<PARKEDCELLCOVERAGE;yy++)
 	{
 		for(short xx=0;xx<PARKEDCELLCOVERAGE;xx++)
-			cout << coverage[yy][xx] << ' ';
+			cout << coverage.map[yy][xx] << ' ';
 		cout << '\n';
 	}
 }
