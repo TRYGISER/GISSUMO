@@ -152,6 +152,9 @@ void addNewRSU(pqxx::connection &conn, list<RSU> &rsuList, unsigned short id, fl
 		{ cerr << "ERROR: RSU is inside a building." << endl; exit(1); }
 	// get cell coordinates from WGS84
 	determineCellFromWGS84(testRSU.xgeo,testRSU.ygeo,testRSU.xcell,testRSU.ycell);
+	// place RSU coordinates inside its CoverageMap element
+	testRSU.coverage.xcenter=testRSU.xcell;
+	testRSU.coverage.ycenter=testRSU.ycell;
 	// add RSU to GIS and get GIS unique id (gid)
 	testRSU.gid = GIS_addPoint(conn,testRSU.xgeo,testRSU.ygeo,testRSU.id, RSU_FEATTYP);
 	// add RSU to list of RSUs

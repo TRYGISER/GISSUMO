@@ -187,6 +187,13 @@ public:
 
 	// Use as: neighborMaps[RSU_ID]=CoverageMap
 	map<unsigned short, CoverageMap> neighborMaps;
+
+	// number of cells the RSU is covering
+	unsigned short coveredCellCount = 0;
+	// number of cells the RSU was covering last time it broadcast its map (for decision criteria)
+	unsigned short coveredCellsOnLastBroadcast = 0;
+	// flag to determine whether to trigger a broadcast
+	bool triggerBroadcast=false;
 };
 
 

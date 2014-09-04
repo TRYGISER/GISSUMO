@@ -331,9 +331,22 @@ int main(int argc, char *argv[])
 						iterRSU->coverage.map[xrelative][yrelative]=signalneigh;
 						if(m_debugCellMaps) cout << "DEBUG\t neighbor gid=" << *neighbor << " on RSU map at xcell=" << xrelative << " ycell=" << yrelative << '\n';
 
+						// increment number of cells this RSU is covering
+						iterRSU->coveredCellCount++;
+						if(m_debugCellMaps) cout << "DEBUG\t RSU id=" << iterRSU->id << " is now covering " << iterRSU->coveredCellCount << " cells" << endl;
 					}	// end distance!=0
 				}	// end for(RSU neighbors)
 
+
+				// Coverage map broadcast criteria
+				if( (iterRSU->coveredCellCount - iterRSU->coveredCellsOnLastBroadcast) > 5)
+				{
+					if(m_debug) cout << "DEBUG Criteria triggered, marking RSU id=" << iterRSU->id << " for coverage map broadcast" << endl;
+					// reset count
+					iterRSU->coveredCellsOnLastBroadcast = iterRSU->coveredCellCount;
+					// update flag
+					iterRSU->triggerBroadcast=true;
+				}
 				// now that the RSU's local map is updated, apply this map to the global signal map
 				applyCoverageToCityMap(*iterRSU, globalSignal);
 
@@ -349,8 +362,11 @@ int main(int argc, char *argv[])
 				iterRSU != rsuList.end();
 				iterRSU++)
 			{
-				if(false)	// TODO
+				if(iterRSU->triggerBroadcast)
 				{
+					// reset broadcast flag
+					iterRSU->triggerBroadcast=false;
+
 					// get the list of RSU neighbors
 					vector<RSU*> neighborRSUs = getRSUsInRange(conn, rsuList, *iterRSU);
 					for(vector<RSU*>::iterator iterNeigh = neighborRSUs.begin();
