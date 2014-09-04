@@ -184,6 +184,9 @@ class RSU : public RoadObject {
 public:
 	// Coverage map, RSU is at the center cell
 	CoverageMap coverage;
+
+	// Use as: neighborMaps[RSU_ID, CoverageMap]
+	map<unsigned short, CoverageMap> neighborMaps;
 };
 
 
