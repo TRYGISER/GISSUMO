@@ -157,6 +157,7 @@ public:
 	unsigned short id;		// numeric identifier
 	unsigned int gid;		// GIS numeric identifier
 	bool active;			// active status
+	float timeAdded;		// entity created at this time
 
 	// Location and cells
 	unsigned short xcell;	// x,y position in a cell map
@@ -195,6 +196,8 @@ public:
 	unsigned short coveredCellsOnLastBroadcast = 0;
 	// flag to determine whether to trigger a broadcast
 	bool triggerBroadcast=false;
+	// last time this RSU's coverage map was updated, for statistics
+	float lastTimeUpdated=0;
 };
 
 

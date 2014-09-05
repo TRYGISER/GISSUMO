@@ -3,6 +3,7 @@
 
 #include "gissumo.h"
 extern bool gm_debug;
+extern float g_simulationTime;
 
 // Returns geographic coordinates of a point given its GID.
 void GIS_getPointCoords(pqxx::connection &c, unsigned int gid, float &xgeo, float &ygeo);

@@ -157,6 +157,8 @@ void addNewRSU(pqxx::connection &conn, list<RSU> &rsuList, unsigned short id, fl
 	testRSU.coverage.ycenter=testRSU.ycell;
 	// add RSU to GIS and get GIS unique id (gid)
 	testRSU.gid = GIS_addPoint(conn,testRSU.xgeo,testRSU.ygeo,testRSU.id, RSU_FEATTYP);
+	// tag time of creation
+	testRSU.timeAdded = g_simulationTime;
 	// add RSU to list of RSUs
 	rsuList.push_back(testRSU);
 }

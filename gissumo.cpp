@@ -3,20 +3,13 @@
 #include "network.h"
 #include "uvcast.h"
 
-/*
- * TODO Implement time-based events
- * TODO Implement callbacks
- * TODO RSUs rerun decision algorithm on (time elapsed / coverage map changed)
- */
-
-
 const ptree& empty_ptree(){
     static ptree t;
     return t;
 }
 
 // Global Simulation Time
-unsigned short g_simulationTime=0;
+float g_simulationTime=0;
 // Can extern the debug variable.
 bool gm_debug = false;
 bool gm_rsu = false;
@@ -249,7 +242,9 @@ int main(int argc, char *argv[])
 				// 2a - New vehicle. Add it to GIS, get GID, add to our local record.
 				newVehicle.gid = GIS_addPoint(conn,newVehicle.xgeo,newVehicle.ygeo,newVehicle.id, CAR_FEATTYP);
 				// Mark as active
-				newVehicle.active=true;
+				newVehicle.active = true;
+				// Tag creation time
+				newVehicle.timeAdded = g_simulationTime;
 				// Add to our local record
 				vehiclesOnGIS.push_back(newVehicle);
 				// Debug
@@ -338,7 +333,11 @@ int main(int argc, char *argv[])
 
 						// only count newly covered cells if coverage goes from 0 to positive
 						if(iterRSU->coverage.map[xrelative][yrelative]==0 && signalneigh)
+						{
 							iterRSU->coveredCellCount++;
+							// Also record current time, to draw statistics on time to complete coverage map
+							iterRSU->lastTimeUpdated=g_simulationTime;
+						}
 						if(m_debugCellMaps) cout << "DEBUG\t RSU id=" << iterRSU->id << " is now covering " << iterRSU->coveredCellCount << " cells" << endl;
 
 						// update RSU coverage map
