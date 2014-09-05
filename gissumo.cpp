@@ -27,6 +27,7 @@ int main(int argc, char *argv[])
 	bool m_printSignalMap = false;
 	bool m_printStatistics = false;
 	bool m_printEndStatistics = false;
+	bool m_printMapTime = false;
 	bool m_validVehicle = false;
 	bool m_debugLocations = false;
 	bool m_debugCellMaps = false;
@@ -44,7 +45,8 @@ int main(int argc, char *argv[])
 		("print-vehicle-map", "prints an ASCII map of vehicle positions")
 		("print-signal-map", "prints an ASCII map of signal quality")
 		("print-statistics", "outputs coverage metrics")
-		("print-end-statistics", "output final counts")
+		("print-end-statistics", "outputs final counts")
+	    ("print-map-time", "outputs coverage map time to completeness")
 		("check-valid-vehicles", "counts number of vehicles in the clear")
 		("enable-network", "enables the network layer and packet transmission")
 		("enable-rsu", "enables the RSU communication code")
@@ -76,6 +78,7 @@ int main(int argc, char *argv[])
 	if (varMap.count("print-signal-map")) 		m_printSignalMap=true;
 	if (varMap.count("print-statistics")) 		m_printStatistics=true;
 	if (varMap.count("print-end-statistics")) 	m_printEndStatistics=true;
+	if (varMap.count("print-map-time"))		 	m_printMapTime=true;
 	if (varMap.count("enable-network")) 		m_networkEnabled=true;
 	if (varMap.count("enable-rsu")) 			gm_rsu=true;
 	if (varMap.count("accident-time")) 			m_accidentTime=varMap["accident-time"].as<unsigned short>();
@@ -86,7 +89,7 @@ int main(int argc, char *argv[])
 	if (varMap.count("rsu-data"))				m_rsuFile=varMap["rsu-data"].as<string>();
 	if (varMap.count("help")) 					{ cout << cliOptDesc; return 1; }
 
-	if (m_debug) cout << "BEGIN FCD FILE " << m_fcdFile << endl;
+	if (gm_debug) cout << "BEGIN FCD FILE " << m_fcdFile << endl;
 
 	/* Parse SUMO logs
 	 * This expects SUMO's floating car data (FCD) output with geographic
@@ -163,12 +166,12 @@ int main(int argc, char *argv[])
 	// list of events
 	EventList events;
 
-	if(m_rsu)
+	if(gm_rsu)
 	{
 		// import RSU locations from m_rsuFile, tab-separated [x,y] coordinates
 
 		std::ifstream inFile(m_rsuFile);
-		if(m_debug) cout << "Adding RSUs from " << m_rsuFile << endl;
+		if(gm_debug) cout << "Adding RSUs from " << m_rsuFile << endl;
 
 		short rsuIDcounter = 10000;
 		while(inFile)
@@ -199,7 +202,7 @@ int main(int argc, char *argv[])
 		/*
 		 * Beginning of each FCD XML time step
 		 */
-		if(m_debug) cout << "\nDEBUG Timestep time=" << iterTime->time << endl;
+		if(gm_debug) cout << "\nDEBUG Timestep time=" << iterTime->time << endl;
 
 		/* Mark all vehicles on vehiclesOnGIS as active=false
 		 * The next step remarks the ones on the road (XML) as active=true
@@ -415,7 +418,7 @@ int main(int argc, char *argv[])
 					centerRange *= 2;
 				} while(centerVehicles.size()==0);
 
-				if(m_debug) cout << "DEBUG AccidentSelected on vehicle"
+				if(gm_debug) cout << "DEBUG AccidentSelected on vehicle"
 						<< " vID " << (*(centerVehicles.begin()))->id
 						<< " xgeo " << (*(centerVehicles.begin()))->xgeo
 						<< " ygeo " << (*(centerVehicles.begin()))->xgeo
@@ -492,7 +495,7 @@ int main(int argc, char *argv[])
 					if(globalSignal.map[xx][yy]!=0)
 						roadCellsSignalSum+=globalSignal.map[xx][yy];
 			roadCellsMeanSignal = (float)roadCellsSignalSum/(float)roadCells;
-			if(m_debug) cout << "DEBUG Road Cell Signal Sum " << roadCellsSignalSum << endl;
+			if(gm_debug) cout << "DEBUG Road Cell Signal Sum " << roadCellsSignalSum << endl;
 
 			cout << "STAT"
 					<< " cells " << roadCells
@@ -565,6 +568,35 @@ int main(int argc, char *argv[])
 			cout << mapIter->second << '\t' << mapIter->first << '\n';
 
 	}
+
+	/* Compute RSU coverage map time (RSU time of creation - RSU last map update time)
+	 */
+	if(m_printMapTime && gm_rsu)
+	{
+		// Store total time, number of RSUs considered
+		float totalTime=0; unsigned short rsuCount=0;
+
+		// Go through each RSU and compute time between creation and last map update
+		for(list<RSU>::iterator iterRSU = rsuList.begin();
+			iterRSU != rsuList.end();
+			iterRSU++)
+		{
+			float deltaTime = iterRSU->lastTimeUpdated - iterRSU->timeAdded;
+
+			if(gm_debug) cout << "DEBUG RSU id=" << iterRSU->id << " has map time " << deltaTime << endl;
+
+			if(deltaTime>0)
+			{ totalTime+=deltaTime; rsuCount++; }
+		}
+
+		if(gm_debug) cout << "DEBUG got total time " << totalTime << " from " << rsuCount << " RSUs" << endl;
+
+		// Compute and print statistic
+		float meanMapTime = totalTime / static_cast<float>(rsuCount);
+		cout << "STAT Mean RSU Map Time " << meanMapTime << endl;
+
+	}
+
 
 	// DEBUG: go through every vehicle position and see if it's not inside a building.
 	if(m_validVehicle)
