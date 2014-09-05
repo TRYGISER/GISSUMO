@@ -26,7 +26,7 @@ vector<float> UVCAST_computeAngles(RoadObject* src, RoadObject* self, vector<Veh
 		angles.push_back(deltaAngle);
 	}
 
-	if(m_debug)
+	if(gm_debug)
 	{
 		cout << "DEBUG UVCAST ANGLES"
 				<< " srcid=" << src->id
@@ -55,7 +55,7 @@ bool UVCAST_determineSCFtask(vector<float> angles)
 	}
 	assert(min<=0); assert(max>=0);
 
-	if(m_debug) cout << "DEBUG UVCAST SCF delta " << max-min << " SCF " << ( (max-min>180)?"false":"true" ) << endl;
+	if(gm_debug) cout << "DEBUG UVCAST SCF delta " << max-min << " SCF " << ( (max-min>180)?"false":"true" ) << endl;
 
 	if(max-min>180)
 		return false;

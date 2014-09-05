@@ -2,7 +2,7 @@
 #define GIS_H_
 
 #include "gissumo.h"
-extern bool m_debug;
+extern bool gm_debug;
 
 // Returns geographic coordinates of a point given its GID.
 void GIS_getPointCoords(pqxx::connection &c, unsigned int gid, float &xgeo, float &ygeo);

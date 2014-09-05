@@ -204,7 +204,7 @@ vector<Vehicle*> getVehiclesInRange(pqxx::connection &conn, list<Vehicle> &vehic
 	}
 
 
-	if(m_debug)
+	if(gm_debug)
 	{
 		cout << "DEBUG getVehiclesInRange valid neighbors " << neighbors.size() << '/' << GISneighbors.size()
 					<< ", neighbors of " << src.id << ": " ;
@@ -244,7 +244,7 @@ vector<Vehicle*> getVehiclesNearPoint(pqxx::connection &conn, list<Vehicle> &veh
 	}
 
 
-	if(m_debug)
+	if(gm_debug)
 	{
 		cout << "DEBUG getVehiclesNearPoint " << GISneighbors.size()
 					<< " neighbors of point X=" << xgeo << ",Y=" << ygeo << " range " << range << " IDs " ;
@@ -297,7 +297,7 @@ vector<RSU*> getRSUsInRange(pqxx::connection &conn, list<RSU> &rsuList, const Ro
 	}
 
 
-	if(m_debug)
+	if(gm_debug)
 	{
 		cout << "DEBUG getRSUsInRange found RSUs " << RSUneighbors.size() << '/' << GISneighbors.size()
 					<< ", RSUs in range of vID " << src.id << ": " ;

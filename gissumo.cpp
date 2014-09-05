@@ -15,12 +15,13 @@ const ptree& empty_ptree(){
     return t;
 }
 
+// Global Simulation Time
+unsigned short g_simulationTime=0;
 // Can extern the debug variable.
-bool m_debug = false;
-bool m_rsu = false;
+bool gm_debug = false;
+bool gm_rsu = false;
 // From network
-extern map<float,int> s_packetPropagationTime;
-
+extern map<float,int> gs_packetPropagationTime;
 
 int main(int argc, char *argv[])
 {
@@ -74,7 +75,7 @@ int main(int argc, char *argv[])
 	if(argc==1) { cout << cliOptDesc; return 1; }
 
 	// Process options
-	if (varMap.count("debug")) 					m_debug=true;
+	if (varMap.count("debug")) 					gm_debug=true;
 	if (varMap.count("debug-locations")) 		m_debugLocations=true;
 	if (varMap.count("debug-cell-maps")) 		m_debugCellMaps=true;
 	if (varMap.count("debug-map-broadcast")) 	m_debugMapBroadcast=true;
@@ -83,7 +84,7 @@ int main(int argc, char *argv[])
 	if (varMap.count("print-statistics")) 		m_printStatistics=true;
 	if (varMap.count("print-end-statistics")) 	m_printEndStatistics=true;
 	if (varMap.count("enable-network")) 		m_networkEnabled=true;
-	if (varMap.count("enable-rsu")) 			m_rsu=true;
+	if (varMap.count("enable-rsu")) 			gm_rsu=true;
 	if (varMap.count("accident-time")) 			m_accidentTime=varMap["accident-time"].as<unsigned short>();
 	if (varMap.count("stop-time")) 				m_stopTime=varMap["stop-time"].as<unsigned short>();
 	if (varMap.count("check-valid-vehicles"))	m_validVehicle=true;
@@ -142,7 +143,7 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	if(m_debug) cout << "Read " << fcd_output.size() << " records from " << m_fcdFile << endl;
+	if(gm_debug) cout << "Read " << fcd_output.size() << " records from " << m_fcdFile << endl;
 
 	/* Open a connection to PostgreSQL
 	 * A password can be added to this string.
@@ -187,7 +188,7 @@ int main(int argc, char *argv[])
 				float ygeo = std::stof(tsvY);
 
 				addNewRSU(conn, rsuList, ++rsuIDcounter, xgeo, ygeo, true);
-				if(m_debug) cout << "\tLoaded RSU " << rsuIDcounter << " on " << xgeo << '\t' << ygeo << endl;
+				if(gm_debug) cout << "\tLoaded RSU " << rsuIDcounter << " on " << xgeo << '\t' << ygeo << endl;
 			}
 		}
 	}
@@ -199,6 +200,9 @@ int main(int argc, char *argv[])
 			iterTime != fcd_output.end();
 			iterTime++ )
 	{
+		// Update global simulation time.
+		g_simulationTime = iterTime->time;
+
 		/*
 		 * Beginning of each FCD XML time step
 		 */
@@ -289,7 +293,7 @@ int main(int argc, char *argv[])
 		/* Go through each RSU and update its coverage map.
 		 * This is computed from the vehicles the RSU sees, and their signal strength.
 		 */
-		if(m_rsu)
+		if(gm_rsu)
 			for(list<RSU>::iterator iterRSU = rsuList.begin();
 				iterRSU != rsuList.end();
 				iterRSU++)
@@ -349,7 +353,7 @@ int main(int argc, char *argv[])
 				// Coverage map broadcast criteria
 				if( (iterRSU->coveredCellCount - iterRSU->coveredCellsOnLastBroadcast) > 5)
 				{
-					if(m_debug || m_debugMapBroadcast) cout << "DEBUG Criteria triggered, marking RSU id=" << iterRSU->id << " for coverage map broadcast" << endl;
+					if(gm_debug || m_debugMapBroadcast) cout << "DEBUG Criteria triggered, marking RSU id=" << iterRSU->id << " for coverage map broadcast" << endl;
 					// reset count
 					iterRSU->coveredCellsOnLastBroadcast = iterRSU->coveredCellCount;
 					// update flag
@@ -364,7 +368,7 @@ int main(int argc, char *argv[])
 		/* Go through each RSU and determine whether to spread its coverage map to its neighbors.
 		 *
 		 */
-		if(m_rsu)
+		if(gm_rsu)
 		{
 			for(list<RSU>::iterator iterRSU = rsuList.begin();
 				iterRSU != rsuList.end();
@@ -556,8 +560,8 @@ int main(int argc, char *argv[])
 	{
 		cout << "STAT PacketPropagationTime"
 				<< "\nCount\tTime" << endl;
-		for(map<float,int>::iterator mapIter=s_packetPropagationTime.begin();
-				mapIter!=s_packetPropagationTime.end();
+		for(map<float,int>::iterator mapIter=gs_packetPropagationTime.begin();
+				mapIter!=gs_packetPropagationTime.end();
 				mapIter++)
 			cout << mapIter->second << '\t' << mapIter->first << '\n';
 
@@ -575,8 +579,9 @@ int main(int argc, char *argv[])
 
 
 	// Clear all POINT entities from the database from past simulations.
-	// Uncomment this to leave the GIS database in a clean state after the simulation.
-//	GIS_clearAllPoints(conn);
+	// Uncomment to leave the GIS database in a clean state after the simulation.
+//	GIS_clearAllPoints(conn, CAR_FEATTYP);
+//	GIS_clearAllPoints(conn, RSU_FEATTYP);
 
 	return 0;
 }
