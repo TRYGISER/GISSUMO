@@ -362,13 +362,13 @@ int main(int argc, char *argv[])
 					iterRSU->triggerBroadcast=true;
 				}
 				// now that the RSU's local map is updated, apply this map to the global signal map
-				applyCoverageToCityMap(*iterRSU, globalSignal);
+				applyCoverageToCityMap(iterRSU->coverage, globalSignal);
 
 			}	// end for(RSUs)
 
 
 		/* Go through each RSU and determine whether to spread its coverage map to its neighbors.
-		 *
+		 * Also, if a broadcast is triggered, run the decision algorithm on the RSU.
 		 */
 		if(gm_rsu)
 		{
@@ -391,6 +391,10 @@ int main(int argc, char *argv[])
 						(*iterNeigh)->neighborMaps[iterRSU->id] = iterRSU->coverage;
 
 					}	// for(neighs)
+
+				// Decide whether to remain active or to shut down.
+				iterRSU->active = decisionAlgorithm(*iterRSU);
+
 				}	// if(false)
 			}	// for(RSUs)
 		}	// if(m_rsu)
@@ -442,12 +446,12 @@ int main(int argc, char *argv[])
 				cout << "\tLocal map of RSU id=" << iterRSU->id << '\n';
 				printLocalCoverage(iterRSU->coverage);
 
-				for(map<unsigned short, CoverageMap>::iterator iterNeighMaps = iterRSU->neighborMaps.begin();
-						iterNeighMaps != iterRSU->neighborMaps.end();
-						iterNeighMaps++)
+				for(map<unsigned short, CoverageMap>::iterator iterNeighMap = iterRSU->neighborMaps.begin();
+						iterNeighMap != iterRSU->neighborMaps.end();
+						iterNeighMap++)
 				{
-					cout << "\t\tRSU id=" << iterRSU->id << " map of neighbor id=" << iterNeighMaps->first << '\n';
-					printLocalCoverage(iterNeighMaps->second);
+					cout << "\t\tRSU id=" << iterRSU->id << " map of neighbor id=" << iterNeighMap->first << '\n';
+					printLocalCoverage(iterNeighMap->second);
 				}
 
 			}
@@ -673,19 +677,60 @@ unsigned short getSignalQuality(unsigned short distance, bool lineOfSight)
 	return 0; 	// no signal
 }
 
-void applyCoverageToCityMap (RSU rsu, CityMapNum &city)
+void applyCoverageToCityMap (CoverageMap coverage, CityMapNum &city)
 {
 	for(short xx=0; xx<PARKEDCELLCOVERAGE; xx++)
 		for(short yy=0; yy<PARKEDCELLCOVERAGE; yy++)
 		{
-			short mapX=xx+rsu.xcell-PARKEDCELLRANGE;
-			short mapY=yy+rsu.ycell-PARKEDCELLRANGE;
+			short mapX=xx+coverage.xcenter-PARKEDCELLRANGE;
+			short mapY=yy+coverage.ycenter-PARKEDCELLRANGE;
 
 			// 'upgrade' coverage in a given cell if this RSU can cover it better
-			if(rsu.coverage.map[xx][yy] > city.map[mapX][mapY])
-				city.map[mapX][mapY] = rsu.coverage.map[xx][yy];
+			if(coverage.map[xx][yy] > city.map[mapX][mapY])
+				city.map[mapX][mapY] = coverage.map[xx][yy];
 		}
 }
+
+bool decisionAlgorithm(RSU &rsu)
+{
+	/* Should be enough to work with the RSU's local neighbor maps.
+	 * For more elaborate algorithms, pass the GIS connection and the list of RSUs.
+	 */
+
+	// Create a blank map
+	CityMapNum rsuMap;
+
+	// Place neighbor local coverage maps on the full map
+	for(map<unsigned short, CoverageMap>::iterator iterNeighMap = rsu.neighborMaps.begin();
+			iterNeighMap != rsu.neighborMaps.end();
+			iterNeighMap++)
+	{
+		applyCoverageToCityMap(iterNeighMap->second, rsuMap);
+	}
+
+	// Count how many cells we cover that aren't covered already
+	// TODO needs verification
+	short xstart = rsu.xcell - PARKEDCELLRANGE;
+	short ystart = rsu.ycell - PARKEDCELLRANGE;
+
+	assert(xstart>=0); assert(ystart>=0);
+
+	for(short xx=xstart; xx < xstart+PARKEDCELLCOVERAGE; xx++)
+		for(short yy=ystart; yy < ystart+PARKEDCELLCOVERAGE; yy++)
+			;
+
+	// better:
+	for(short xx=-PARKEDCELLCOVERAGE; xx<PARKEDCELLCOVERAGE; xx++)
+		for(short yy=-PARKEDCELLCOVERAGE; yy<PARKEDCELLCOVERAGE; yy++)
+			// don't need xstart nor ystart here, work with relative numbers. xx for RSU map, rsu.xcell+xx for city map (?)
+			;
+
+	// Decide
+
+
+	return true;
+}
+
 
 void printLocalCoverage(CoverageMap coverage)
 {

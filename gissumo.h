@@ -69,38 +69,6 @@ using namespace boost::program_options;
 #define RSU_FEATTYP 2223	// RSU
 #define BLD_FEATTYP 9790	// Building
 
-/* Functions
-   --------- */
-
-// Given a WGS84 pair of coordinates, return an integer cell position.
-void determineCellFromWGS84 (float xgeo, float ygeo, unsigned short &xcell, unsigned short &ycell);
-
-// Returns the distance in seconds between two coordinates on the same bearing (two latitudes or two longitudes).
-unsigned int deltaSeconds(float c1, float c2);
-
-// Prints a char CityMap to the terminal.
-class CityMapChar; class CityMapNum;
-void printCityMap (CityMapChar cmap);
-void printCityMap (CityMapNum cmap);
-
-// Returns the signal quality on a 1-5 scale based on distance and Line of Sight.
-unsigned short getSignalQuality(unsigned short distance, bool lineOfSight);
-
-// Applies the coverage map of an RSU to a global city map.
-class RSU; class CityMapNum;
-void applyCoverageToCityMap(RSU rsu, CityMapNum &city);
-
-// Prints ASCII of a local coverage map.
-class CoverageMap;
-void printLocalCoverage(CoverageMap coverage);
-
-// Prints all details of a vehicle.
-struct Vehicle;
-void printVehicleDetails(Vehicle veh);
-
-// Prints the list<Vehicle> of vehicles.
-void printListOfVehicles(list<Vehicle> &vehiclesOnGIS);
-
 
 /* Classes and Structs
    ------------------- */
@@ -256,6 +224,37 @@ private:
 };
 
 
+
+/* Functions
+   --------- */
+
+// Given a WGS84 pair of coordinates, return an integer cell position.
+void determineCellFromWGS84 (float xgeo, float ygeo, unsigned short &xcell, unsigned short &ycell);
+
+// Returns the distance in seconds between two coordinates on the same bearing (two latitudes or two longitudes).
+unsigned int deltaSeconds(float c1, float c2);
+
+// Prints a char CityMap to the terminal.
+void printCityMap (CityMapChar cmap);
+void printCityMap (CityMapNum cmap);
+
+// Returns the signal quality on a 1-5 scale based on distance and Line of Sight.
+unsigned short getSignalQuality(unsigned short distance, bool lineOfSight);
+
+// Applies the coverage map of an RSU to a global city map.
+void applyCoverageToCityMap (CoverageMap map, CityMapNum &city);
+
+// Run the decision algorithm to determine whether an RSU should remain active.
+bool decisionAlgorithm(RSU &rsu);
+
+// Prints ASCII of a local coverage map.
+void printLocalCoverage(CoverageMap coverage);
+
+// Prints all details of a vehicle.
+void printVehicleDetails(Vehicle veh);
+
+// Prints the list<Vehicle> of vehicles.
+void printListOfVehicles(list<Vehicle> &vehiclesOnGIS);
 
 
 
