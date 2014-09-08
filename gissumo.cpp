@@ -33,6 +33,7 @@ int main(int argc, char *argv[])
 	bool m_debugCellMaps = false;
 	bool m_debugMapBroadcast = false;
 	bool m_networkEnabled = false;
+	bool m_bruteforce = false;
 	unsigned short m_accidentTime=60;
 	unsigned short m_stopTime=0;
 	unsigned short m_rsuLoadTime=0;
@@ -51,6 +52,7 @@ int main(int argc, char *argv[])
 		("check-valid-vehicles", "counts number of vehicles in the clear")
 		("enable-network", "enables the network layer and packet transmission")
 		("enable-rsu", "enables the RSU communication code")
+		("bruteforce", "bruteforces the best RSU coverage combination")
 		("accident-time", boost::program_options::value<unsigned short>(), "creates an accident at a specific time")
 		("stop-time", boost::program_options::value<unsigned short>(), "stops the simulation at a specific time")
 		("pause", boost::program_options::value<unsigned short>(), "pauses for N milliseconds after every timestep")
@@ -83,6 +85,7 @@ int main(int argc, char *argv[])
 	if (varMap.count("print-map-time"))		 	m_printMapTime=true;
 	if (varMap.count("enable-network")) 		m_networkEnabled=true;
 	if (varMap.count("enable-rsu")) 			gm_rsu=true;
+	if (varMap.count("bruteforce")) 			m_bruteforce=true;
 	if (varMap.count("accident-time")) 			m_accidentTime=varMap["accident-time"].as<unsigned short>();
 	if (varMap.count("stop-time")) 				m_stopTime=varMap["stop-time"].as<unsigned short>();
 	if (varMap.count("rsu-load-time")) 			m_rsuLoadTime=varMap["rsu-load-time"].as<unsigned short>();
@@ -170,7 +173,7 @@ int main(int argc, char *argv[])
 	EventList events;
 
 
-	/* * * TIMESTEP BEGIN * * */
+	/* * * TIMESTEP LOOP BEGIN * * */
 
 
 	// Run through every time step on the FCD XML file
@@ -572,6 +575,9 @@ int main(int argc, char *argv[])
 	}	// end for(timestep)
 
 
+	/* * * TIMESTEP LOOP END * * */
+
+
 	/* Print final count of packet propagation times.
 	 */
 	if(m_printEndStatistics)
@@ -614,7 +620,51 @@ int main(int argc, char *argv[])
 	}
 
 
-	// DEBUG: go through every vehicle position and see if it's not inside a building.
+	// Bruteforce the optimal RSU coverage solution.
+	if(m_bruteforce)
+	{
+		// Clone active RSUs from rsuList to rsuListActive
+		vector<RSU> rsuListActive;	// vector required for [] access
+		for(list<RSU>::iterator iterRSU = rsuList.begin(); iterRSU != rsuList.end(); iterRSU++)
+			if(iterRSU->active) rsuListActive.push_back(*iterRSU);
+
+		cout << "\nBruteforcing optimal RSU coverage solution..."
+				<< "\n\tWorking with " << rsuListActive.size() << " active RSUs" << endl;
+
+		/* Generate a random number from 1 to 2^activeRSUs, get its bits,
+		 * and each bit designates an RSU in rsuActiveList to turn ON.
+		 * 2^24: ~16 million choices
+		 */
+		CityMapChar cityCoverageSignal;
+		CityMapNum cityCoverageCount;
+
+		int xRand;
+		srand(1);	// seed
+
+		// get a random number
+		xRand=rand()%(int)pow(2,rsuListActive.size())+1;
+
+		// look at it bit by bit
+		for (int i=0; i<24; i++)
+		{
+			if ( ( (xRand >> i) & 1) == 1)
+			{
+				// bit 'i' is a '1'
+				// add car 'i' in 'listOfCars' to the maps
+//				applyCountToCityMap(rsuListActive[i],&cityCountMap); TODO
+				applyCoverageToCityMap(rsuListActive[i].coverage, cityCoverageCount);
+			}
+		}
+
+		// TODO
+
+
+
+
+	}
+
+
+	// Go through every vehicle position and see if it's not inside a building.
 	if(m_validVehicle)
 	{
 		unsigned int bumpcount=0, clearcount=0;
