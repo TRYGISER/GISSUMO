@@ -9,7 +9,7 @@ const ptree& empty_ptree(){
 }
 
 // Global Simulation Time
-float g_simulationTime=0;
+float g_simulationTime=-1;
 // Can extern the debug variable.
 bool gm_debug = false;
 bool gm_rsu = false;
@@ -35,6 +35,7 @@ int main(int argc, char *argv[])
 	bool m_networkEnabled = false;
 	unsigned short m_accidentTime=60;
 	unsigned short m_stopTime=0;
+	unsigned short m_rsuLoadTime=0;
 	string m_fcdFile = "./fcdoutput.xml";
 	string m_rsuFile = "./rsudata.tsv";
 	unsigned short m_pause = 0;
@@ -55,7 +56,8 @@ int main(int argc, char *argv[])
 		("pause", boost::program_options::value<unsigned short>(), "pauses for N milliseconds after every timestep")
 		("fcd-data", boost::program_options::value<string>(), "floating car data file location")
 		("rsu-data", boost::program_options::value<string>(), "tab-separated file with x,y coordinates of RSUs")
-	    ("debug", "enable debug mode")
+		("rsu-load-time", boost::program_options::value<unsigned short>(), "loads the RSUs at a specific time")
+		("debug", "enable debug mode")
 	    ("debug-locations", "debug vehicle location updates")
 	    ("debug-cell-maps", "debug cell map updates")
 	    ("debug-map-broadcast", "debug coverage map broadcasting")
@@ -83,6 +85,7 @@ int main(int argc, char *argv[])
 	if (varMap.count("enable-rsu")) 			gm_rsu=true;
 	if (varMap.count("accident-time")) 			m_accidentTime=varMap["accident-time"].as<unsigned short>();
 	if (varMap.count("stop-time")) 				m_stopTime=varMap["stop-time"].as<unsigned short>();
+	if (varMap.count("rsu-load-time")) 			m_rsuLoadTime=varMap["rsu-load-time"].as<unsigned short>();
 	if (varMap.count("check-valid-vehicles"))	m_validVehicle=true;
 	if (varMap.count("pause"))					m_pause=varMap["pause"].as<unsigned short>();
 	if (varMap.count("fcd-data"))				m_fcdFile=varMap["fcd-data"].as<string>();
@@ -166,28 +169,8 @@ int main(int argc, char *argv[])
 	// list of events
 	EventList events;
 
-	if(gm_rsu)
-	{
-		// import RSU locations from m_rsuFile, tab-separated [x,y] coordinates
 
-		std::ifstream inFile(m_rsuFile);
-		if(gm_debug) cout << "Adding RSUs from " << m_rsuFile << endl;
-
-		short rsuIDcounter = 10000;
-		while(inFile)
-		{
-			string tsvX, tsvY;
-			inFile >> tsvX; inFile >> tsvY;
-			if(tsvX!="" && tsvY!="")
-			{
-				float xgeo = std::stof(tsvX);
-				float ygeo = std::stof(tsvY);
-
-				addNewRSU(conn, rsuList, ++rsuIDcounter, xgeo, ygeo, true);
-				if(gm_debug) cout << "\tLoaded RSU " << rsuIDcounter << " on " << xgeo << '\t' << ygeo << endl;
-			}
-		}
-	}
+	/* * * TIMESTEP BEGIN * * */
 
 
 	// Run through every time step on the FCD XML file
@@ -196,13 +179,43 @@ int main(int argc, char *argv[])
 			iterTime != fcd_output.end();
 			iterTime++ )
 	{
-		// Update global simulation time.
-		g_simulationTime = iterTime->time;
 
 		/*
 		 * Beginning of each FCD XML time step
 		 */
+
+		// Break if FCD XML has two timesteps with the same time.
+		assert(iterTime->time > g_simulationTime);
+
+		// Update global simulation time.
+		g_simulationTime = iterTime->time;
 		if(gm_debug) cout << "\nDEBUG Timestep time=" << iterTime->time << endl;
+
+		/* Only load RSUs at specified time
+		 */
+		if(iterTime->time==m_rsuLoadTime && gm_rsu)
+		{
+			// import RSU locations from m_rsuFile, tab-separated [x,y] coordinates
+
+			std::ifstream inFile(m_rsuFile);
+			if(gm_debug) cout << "Adding RSUs from " << m_rsuFile << endl;
+
+			short rsuIDcounter = 10000;
+			while(inFile)
+			{
+				string tsvX, tsvY;
+				inFile >> tsvX; inFile >> tsvY;
+				if(tsvX!="" && tsvY!="")
+				{
+					float xgeo = std::stof(tsvX);
+					float ygeo = std::stof(tsvY);
+
+					addNewRSU(conn, rsuList, ++rsuIDcounter, xgeo, ygeo, true);
+					if(gm_debug) cout << "\tLoaded RSU " << rsuIDcounter << " on " << xgeo << '\t' << ygeo << endl;
+				}
+			}
+		}
+
 
 		/* Mark all vehicles on vehiclesOnGIS as active=false
 		 * The next step remarks the ones on the road (XML) as active=true
@@ -473,10 +486,9 @@ int main(int argc, char *argv[])
 					<< " active " << countActive
 					<< " inactive " << countInactive
 					<< endl;
-		}
 
-		if(m_printStatistics)
-		{
+			/*
+			 */
 			// count the number of 'road' cells
 			unsigned short roadCells = 0;
 			for(short xx=0;xx<CITYWIDTH;xx++)
