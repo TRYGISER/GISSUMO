@@ -631,33 +631,50 @@ int main(int argc, char *argv[])
 		cout << "\nBruteforcing optimal RSU coverage solution..."
 				<< "\n\tWorking with " << rsuListActive.size() << " active RSUs" << endl;
 
-		/* Generate a random number from 1 to 2^activeRSUs, get its bits,
-		 * and each bit designates an RSU in rsuActiveList to turn ON.
-		 * 2^24: ~16 million choices
+		// Don't do more than 32 RSUs.
+		assert(rsuListActive.size() <= 32);
+
+		/* Test all combinations from 1 to 2^RSUs
 		 */
-		CityMapChar cityCoverageSignal;
-		CityMapNum cityCoverageCount;
-
-		int xRand;
-		srand(1);	// seed
-
-		// get a random number
-		xRand=rand()%(int)pow(2,rsuListActive.size())+1;
-
-		// look at it bit by bit
-		for (int i=0; i<24; i++)
+		if(gm_debug) cout << "\tGoing through combination ID: ";
+		for(uint32_t cID = 1; cID < pow(2,rsuListActive.size()); cID++)
 		{
-			if ( ( (xRand >> i) & 1) == 1)
-			{
-				// bit 'i' is a '1'
-				// add car 'i' in 'listOfCars' to the maps
-//				applyCountToCityMap(rsuListActive[i],&cityCountMap); TODO
-				applyCoverageToCityMap(rsuListActive[i].coverage, cityCoverageCount);
-			}
+			if(gm_debug) cout << cID << ' ';
+
+			/*	'cityCoverageSignal': Best signal level at each cell
+			 * 	'cityCoverageCount'	: Number of RSUs covering each cell
+			 */
+			CityMapNum cityCoverageSignal, cityCoverageCount;
+
+			// Look at combination ID (cID) bit by bit
+			for (int i=0; i<24; i++)
+				if ( ( (cID >> i) & 1) == 1)
+				{
+					// bit 'i' is a '1'
+					// add car 'i' in 'listOfCars' to the maps
+					applyCountToCityMap(rsuListActive[i].coverage, cityCoverageCount);
+					applyCoverageToCityMap(rsuListActive[i].coverage, cityCoverageSignal);
+				}
+
+			// Compute statistics for this combination
+			map<int,unsigned short> stats = getCoverageStatistics(cityCoverageSignal);
+			unsigned short over1 = getOvercoverageMetric(cityCoverageCount, 1);
+			unsigned short over2 = getOvercoverageMetric(cityCoverageCount, 2);
+			unsigned short over3 = getOvercoverageMetric(cityCoverageCount, 3);
+
+			/* Can't store all combinations, must only keep the best ones stored
+			 */
+
 		}
+		if(gm_debug) cout << endl;
+
 
 		// TODO
-
+		// Store combination, statistics
+		// Should probably sort the list of RSUs by RSU ID so the results can be replicated
+		// Sort statistics
+		// Present top results by 2-3 criteria
+		// Display those results as a coverage map
 
 
 
@@ -739,6 +756,34 @@ unsigned short getSignalQuality(unsigned short distance, bool lineOfSight)
 	return 0; 	// no signal
 }
 
+map<int,unsigned short> getCoverageStatistics (CityMapNum cmap)
+{
+	// Initialize an STL map with coverage levels 0 through 5
+	map<int,unsigned short> stats = {{0,0},{1,0},{2,0},{3,0},{4,0},{5,0}};
+
+	// Go through each cell, register its coverage on 'stats'
+	for(short yy=0; yy<CITYWIDTH; yy++)
+		for(short xx=0; xx<CITYHEIGHT; xx++)
+			stats[ cmap.map[yy][xx] ]++;	// e.g. if the cell has coverage 5, then stats[5]++
+
+	return stats;
+}
+
+unsigned short getOvercoverageMetric (CityMapNum cmap, short cap)
+{
+	/* Arguments:
+	 *		'cap': above this number, it counts as overcovered
+	 */
+	unsigned short metric=0;
+
+	for(short yy=0; yy<CITYWIDTH; yy++)
+		for(short xx=0; xx<CITYHEIGHT; xx++)
+			if(cmap.map[yy][xx] > cap)
+				metric += cmap.map[yy][xx]-cap;
+
+	return metric;
+}
+
 void applyCoverageToCityMap (CoverageMap coverage, CityMapNum &city)
 {
 	for(short xx=0; xx<PARKEDCELLCOVERAGE; xx++)
@@ -750,6 +795,20 @@ void applyCoverageToCityMap (CoverageMap coverage, CityMapNum &city)
 			// 'upgrade' coverage in a given cell if this RSU can cover it better
 			if(coverage.map[xx][yy] > city.map[mapX][mapY])
 				city.map[mapX][mapY] = coverage.map[xx][yy];
+		}
+}
+
+void applyCountToCityMap (CoverageMap coverage, CityMapNum &city)
+{
+	for(short xx=0; xx<PARKEDCELLCOVERAGE; xx++)
+		for(short yy=0; yy<PARKEDCELLCOVERAGE; yy++)
+		{
+			short mapX=xx+coverage.xcenter-PARKEDCELLRANGE;
+			short mapY=yy+coverage.ycenter-PARKEDCELLRANGE;
+
+			// if a cell is covered, increment its coverage count
+			if(coverage.map[xx][yy])
+				city.map[mapX][mapY]++;
 		}
 }
 

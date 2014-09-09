@@ -85,7 +85,7 @@ public:
 // A numeric map for keeping data in memory, such as coverage levels
 class CityMapNum {
 public:
-	array< array<int,CITYHEIGHT>,CITYWIDTH > map;	// city coverage map, (0,0) on Top Left
+	array< array<short,CITYHEIGHT>,CITYWIDTH > map;	// city coverage map, (0,0) on Top Left
 
 	CityMapNum() { for(int i=0; i<CITYWIDTH; i++) map[i].fill(0); }
 	CityMapNum(int fill) { for(int i=0; i<CITYWIDTH; i++) map[i].fill(fill); }
@@ -243,6 +243,15 @@ unsigned short getSignalQuality(unsigned short distance, bool lineOfSight);
 
 // Applies the coverage map of an RSU to a global city map.
 void applyCoverageToCityMap (CoverageMap map, CityMapNum &city);
+
+// Applies the RSU count to a global city map.
+void applyCountToCityMap (CoverageMap coverage, CityMapNum &city);
+
+// Returns the number of cells covered with which signal strength (e.g. map[3] has # of cells with coverage level 3).
+map<int,unsigned short> getCoverageStatistics (CityMapNum cmap);
+
+// Determines the overcoverage metric. Supply a map with RSU counts, not signal levels.
+unsigned short getOvercoverageMetric (CityMapNum cmap, short cap);
 
 // Run the decision algorithm to determine whether an RSU should remain active.
 bool decisionAlgorithm(RSU &rsu);
