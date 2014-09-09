@@ -29,16 +29,18 @@ void processNetwork(pqxx::connection &conn, float timestep, list<Vehicle> &vehic
 	 */
 	if(gm_rsu)
 		for(list<RSU>::iterator iterRSU=rsuList.begin(); iterRSU!=rsuList.end(); iterRSU++)
-			if(iterRSU->packet.packetID)
-				initialBroadcast(conn, timestep, vehiclesOnGIS, rsuList, &(*iterRSU), &(*iterRSU));
+			if(iterRSU->active)		// RSU is active
+				if(iterRSU->packet.packetID)	// RSU has a packet
+					initialBroadcast(conn, timestep, vehiclesOnGIS, rsuList, &(*iterRSU), &(*iterRSU));
 
 	// All RSUs share the same packet. This could be improved.
 	if(gm_rsu)
 		for(list<RSU>::iterator iterRSU=rsuList.begin(); iterRSU!=rsuList.end(); iterRSU++)
-			if(iterRSU->packet.packetID)
-				for(list<RSU>::iterator iterRSU2=rsuList.begin(); iterRSU2!=rsuList.end(); iterRSU2++)
-					if(!iterRSU2->packet.packetID)
-						iterRSU2->packet=iterRSU->packet;
+			if(iterRSU->active)
+				if(iterRSU->packet.packetID)
+					for(list<RSU>::iterator iterRSU2=rsuList.begin(); iterRSU2!=rsuList.end(); iterRSU2++)
+						if(!iterRSU2->packet.packetID)
+							iterRSU2->packet=iterRSU->packet;
 }
 
 
@@ -70,20 +72,21 @@ void rebroadcastPacket(pqxx::connection &conn, float timestep, list<Vehicle> &ve
 		vector<RSU*> RSUneighbors = getRSUsInRange(conn, rsuList, *veh);
 		// Go through each RSU. If the packet isn't the same as ours, send our packet to it.
 		for(vector<RSU*>::iterator iter=RSUneighbors.begin(); iter!=RSUneighbors.end(); iter++)
-			if( (*iter)->packet.packetID != veh->packet.packetID )
-				{
-					(*iter)->packet.packetID = veh->packet.packetID;
-					(*iter)->packet.packetSrc = veh->id;
-					(*iter)->packet.packetTime = timestep;
-					s_packetCount++;
-	//				s_packetPropagationTime[timestep]++;
+			if((*iter)->active)
+				if( (*iter)->packet.packetID != veh->packet.packetID )
+					{
+						(*iter)->packet.packetID = veh->packet.packetID;
+						(*iter)->packet.packetSrc = veh->id;
+						(*iter)->packet.packetTime = timestep;
+						s_packetCount++;
+//						s_packetPropagationTime[timestep]++;
 
-					if(gm_debug)
-						cout << "DEBUG rebroadcastPacket RSU"
-								<< " from vID " << veh->id
-								<< " to vID " << (*iter)->id
-								<< endl;
-				}
+						if(gm_debug)
+							cout << "DEBUG rebroadcastPacket RSU"
+									<< " from vID " << veh->id
+									<< " to vID " << (*iter)->id
+									<< endl;
+					}
 	}
 }
 
@@ -141,20 +144,21 @@ void initialBroadcast(pqxx::connection &conn, float timestep, list<Vehicle> &veh
 		vector<RSU*> RSUneighbors = getRSUsInRange(conn, rsuList, *selfVeh);
 		// Go through each RSU. If the packet isn't the same as ours, send our packet to it.
 		for(vector<RSU*>::iterator iter=RSUneighbors.begin(); iter!=RSUneighbors.end(); iter++)
-			if( (*iter)->packet.packetID != selfVeh->packet.packetID )
-				{
-					(*iter)->packet.packetID = selfVeh->packet.packetID;
-					(*iter)->packet.packetSrc = selfVeh->id;
-					(*iter)->packet.packetTime = timestep;
-					s_packetCount++;
-	//				s_packetPropagationTime[timestep]++;
+			if((*iter)->active)
+				if( (*iter)->packet.packetID != selfVeh->packet.packetID )
+					{
+						(*iter)->packet.packetID = selfVeh->packet.packetID;
+						(*iter)->packet.packetSrc = selfVeh->id;
+						(*iter)->packet.packetTime = timestep;
+						s_packetCount++;
+		//				s_packetPropagationTime[timestep]++;
 
-					if(gm_debug)
-						cout << "DEBUG initialBroadcast RSU"
-								<< " from vID " << selfVeh->id
-								<< " to vID " << (*iter)->id
-								<< endl;
-				}
+						if(gm_debug)
+							cout << "DEBUG initialBroadcast RSU"
+									<< " from vID " << selfVeh->id
+									<< " to vID " << (*iter)->id
+									<< endl;
+					}
 	}
 
 	// Call UVCAST and decide SCF function.
