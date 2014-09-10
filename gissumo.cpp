@@ -636,10 +636,14 @@ int main(int argc, char *argv[])
 
 		/* Test all combinations from 1 to 2^RSUs
 		 */
-		if(gm_debug) cout << "\tGoing through combination ID: ";
+		if(gm_debug) cout << "\tGoing through combination ID:";
+
+		// Vector to store the statistics of each combination
+		vector<StatEntry> stats;
+
 		for(uint32_t cID = 1; cID < pow(2,rsuListActive.size()); cID++)
 		{
-			if(gm_debug) cout << cID << ' ';
+			if(gm_debug) cout << ' ' << cID;
 
 			/*	'cityCoverageSignal': Best signal level at each cell
 			 * 	'cityCoverageCount'	: Number of RSUs covering each cell
@@ -657,27 +661,59 @@ int main(int argc, char *argv[])
 				}
 
 			// Compute statistics for this combination
-			map<int,unsigned short> stats = getCoverageStatistics(cityCoverageSignal);
+			map<int,unsigned short> covStat = getCoverageStatistics(cityCoverageSignal);
 			unsigned short over1 = getOvercoverageMetric(cityCoverageCount, 1);
 			unsigned short over2 = getOvercoverageMetric(cityCoverageCount, 2);
 			unsigned short over3 = getOvercoverageMetric(cityCoverageCount, 3);
 
-			/* Can't store all combinations, must only keep the best ones stored
+			// Make a record of this combination's statistics.
+			StatEntry ccomb;
+			ccomb.cID = cID;
+			ccomb.cov0 = covStat[0];
+			ccomb.cov1 = covStat[1];
+			ccomb.cov2 = covStat[2];
+			ccomb.cov3 = covStat[3];
+			ccomb.cov4 = covStat[4];
+			ccomb.cov5 = covStat[5];
+			ccomb.over1 = over1;
+			ccomb.over2 = over2;
+			ccomb.over3 = over3;
+
+			/* Can't store all combinations, must only keep the best ones stored.
+			 * Discard combinations unless they are better at at least 1 stat on
+			 * what we currently have stored.
 			 */
+
+			// Store the max or min stats that we're keeping in memory
+			StatEntry limits;
+
+			if(stats.size())	// if we're not empty
+			{
+					 if(ccomb.cov0 < limits.cov0 )			{ stats.push_back(ccomb); limits.cov0=ccomb.cov0; }
+				else if(ccomb.cov1 > limits.cov1 )			{ stats.push_back(ccomb); limits.cov1=ccomb.cov1; }
+				else if(ccomb.cov2 > limits.cov2 )			{ stats.push_back(ccomb); limits.cov2=ccomb.cov2; }
+				else if(ccomb.cov3 > limits.cov3 )			{ stats.push_back(ccomb); limits.cov3=ccomb.cov3; }
+				else if(ccomb.cov4 > limits.cov4 )			{ stats.push_back(ccomb); limits.cov4=ccomb.cov4; }
+				else if(ccomb.cov5 > limits.cov5 )			{ stats.push_back(ccomb); limits.cov5=ccomb.cov5; }
+				else if(ccomb.over1 < limits.over1 )		{ stats.push_back(ccomb); limits.over1=ccomb.over1; }
+				else if(ccomb.over2 < limits.over2 )		{ stats.push_back(ccomb); limits.over2=ccomb.over2; }
+				else if(ccomb.over3 < limits.over3 )		{ stats.push_back(ccomb); limits.over3=ccomb.over3; }
+				else if(gm_debug) cout << 'x';	// Signal that we're not storing this combination
+			} else
+			{
+				stats.push_back(ccomb);
+				limits=ccomb; // the first entry now sets the limits
+			}
+
+			/* 'stats' now has a mix of the best combinations and some redundant results,
+			 * but the amount of data we store should be much smaller now.
+			 */
+
+			// TODO print result
+			// TODO sort the list of RSUs by RSU ID so the results can be replicated
 
 		}
 		if(gm_debug) cout << endl;
-
-
-		// TODO
-		// Store combination, statistics
-		// Should probably sort the list of RSUs by RSU ID so the results can be replicated
-		// Sort statistics
-		// Present top results by 2-3 criteria
-		// Display those results as a coverage map
-
-
-
 	}
 
 

@@ -91,6 +91,13 @@ public:
 	CityMapNum(int fill) { for(int i=0; i<CITYWIDTH; i++) map[i].fill(fill); }
 };
 
+// A structure to hold statistics of a combination
+struct StatEntry {
+	uint32_t cID;
+	unsigned short cov0, cov1, cov2, cov3, cov4, cov5;
+	unsigned short over1, over2, over3;
+};
+
 
 /* Packet. Network layer.
  */
