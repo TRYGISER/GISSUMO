@@ -684,11 +684,12 @@ int main(int argc, char *argv[])
 			 * what we currently have stored.
 			 */
 
-			// Store the max or min stats that we're keeping in memory
+			// Store the max or min stats that we're keeping in memory. This initializes to max and min values.
 			StatEntry limits;
 
 			if(stats.size())	// if we're not empty
 			{
+				if(gm_debug) cout << '*';	// Marker to signal that we're storing this combination. See below.
 					 if(ccomb.cov0 < limits.cov0 )			{ stats.push_back(ccomb); limits.cov0=ccomb.cov0; }
 				else if(ccomb.cov1 > limits.cov1 )			{ stats.push_back(ccomb); limits.cov1=ccomb.cov1; }
 				else if(ccomb.cov2 > limits.cov2 )			{ stats.push_back(ccomb); limits.cov2=ccomb.cov2; }
@@ -698,11 +699,7 @@ int main(int argc, char *argv[])
 				else if(ccomb.over1 < limits.over1 )		{ stats.push_back(ccomb); limits.over1=ccomb.over1; }
 				else if(ccomb.over2 < limits.over2 )		{ stats.push_back(ccomb); limits.over2=ccomb.over2; }
 				else if(ccomb.over3 < limits.over3 )		{ stats.push_back(ccomb); limits.over3=ccomb.over3; }
-				else if(gm_debug) cout << 'x';	// Signal that we're not storing this combination
-			} else
-			{
-				stats.push_back(ccomb);
-				limits=ccomb; // the first entry now sets the limits
+				else if(gm_debug) cout << '\b';		// We're not actually storing, so erase the marker.
 			}
 
 			/* 'stats' now has a mix of the best combinations and some redundant results,

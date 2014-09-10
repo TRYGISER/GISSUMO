@@ -93,9 +93,9 @@ public:
 
 // A structure to hold statistics of a combination
 struct StatEntry {
-	uint32_t cID;
-	unsigned short cov0, cov1, cov2, cov3, cov4, cov5;
-	unsigned short over1, over2, over3;
+	uint32_t cID=0;
+	unsigned short cov0=USHRT_MAX, cov1=0, cov2=0, cov3=0, cov4=0, cov5=0;
+	unsigned short over1=USHRT_MAX, over2=USHRT_MAX, over3=USHRT_MAX;
 };
 
 
