@@ -634,6 +634,9 @@ int main(int argc, char *argv[])
 		// Don't do more than 32 RSUs.
 		assert(rsuListActive.size() <= 32);
 
+		// Sort the list of RSUs by ID
+		std::sort(rsuListActive.begin(), rsuListActive.end());
+
 		/* Test all combinations from 1 to 2^RSUs
 		 */
 		if(gm_debug) cout << "\tGoing through combination ID:";
@@ -707,7 +710,6 @@ int main(int argc, char *argv[])
 			 */
 
 			// TODO print result
-			// TODO sort the list of RSUs by RSU ID so the results can be replicated
 
 		}
 		if(gm_debug) cout << endl;

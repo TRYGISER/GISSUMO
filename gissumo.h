@@ -142,6 +142,10 @@ public:
 
 	// Network layer
 	Packet packet;		// store a single packet for now
+
+	// Define < operator to apply to ID
+    bool operator < (const RoadObject& str) const
+    	{ return (id < str.id); }
 };
 
 
