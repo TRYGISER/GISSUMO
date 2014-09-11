@@ -717,29 +717,29 @@ int main(int argc, char *argv[])
 			else if(ccomb.over2 < limits.over2 )		{ stats.push_back(ccomb); limits.over2=ccomb.over2;}
 			else if(ccomb.over3 < limits.over3 )		{ stats.push_back(ccomb); limits.over3=ccomb.over3;}
 
-			/* 'stats' now has a mix of the best combinations and some redundant results,
-			 * but the amount of data we store should be much smaller now.
-			 */
+		}	// end for(combinations)
 
-			// Print the combinations that were stored.
-			cout << '\n' << "cID\tcov0\tcov1\tcov2\tcov3\tcov4\tcov5\tover1\tover2\tover3" << endl;
-			for(vector<StatEntry>::iterator iterStat = stats.begin();
-					iterStat != stats.end();
-					iterStat++)
-						cout << iterStat->cID << '\t'
-							<< iterStat->cov0 << '\t'
-							<< iterStat->cov1 << '\t'
-							<< iterStat->cov2 << '\t'
-							<< iterStat->cov3 << '\t'
-							<< iterStat->cov4 << '\t'
-							<< iterStat->cov5 << '\t'
-							<< iterStat->over1 << '\t'
-							<< iterStat->over2 << '\t'
-							<< iterStat->over3 << endl;
 
-		}
-		if(gm_debug) cout << endl;
-	}
+		/* 'stats' now has a mix of the best combinations and some redundant results,
+		 * but the amount of data we store should be much smaller now.
+		 */
+
+		// Print the combinations that were stored.
+		cout << '\n' << "cID\tcov0\tcov1\tcov2\tcov3\tcov4\tcov5\tover1\tover2\tover3" << endl;
+		for(vector<StatEntry>::iterator iterStat = stats.begin();
+				iterStat != stats.end();
+				iterStat++)
+					cout << iterStat->cID << '\t'
+						<< iterStat->cov0 << '\t'
+						<< iterStat->cov1 << '\t'
+						<< iterStat->cov2 << '\t'
+						<< iterStat->cov3 << '\t'
+						<< iterStat->cov4 << '\t'
+						<< iterStat->cov5 << '\t'
+						<< iterStat->over1 << '\t'
+						<< iterStat->over2 << '\t'
+						<< iterStat->over3 << endl;
+	}	// end if(bruteforce)
 
 
 	// Go through every vehicle position and see if it's not inside a building.
