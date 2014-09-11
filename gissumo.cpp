@@ -38,6 +38,7 @@ int main(int argc, char *argv[])
 	unsigned short m_accidentTime=60;
 	unsigned short m_stopTime=0;
 	unsigned short m_rsuLoadTime=0;
+	uint32_t m_printCombination = 0;
 	string m_fcdFile = "./fcdoutput.xml";
 	string m_rsuFile = "./rsudata.tsv";
 	unsigned short m_pause = 0;
@@ -50,6 +51,7 @@ int main(int argc, char *argv[])
 		("print-statistics", "outputs coverage metrics")
 		("print-end-statistics", "outputs final counts")
 	    ("print-map-time", "outputs coverage map time to completeness")
+		("print-combination", boost::program_options::value<uint32_t>(), "prints statistics of a specific combination")
 		("check-valid-vehicles", "counts number of vehicles in the clear")
 		("enable-network", "enables the network layer and packet transmission")
 		("enable-rsu", "enables the RSU communication code")
@@ -94,6 +96,7 @@ int main(int argc, char *argv[])
 	if (varMap.count("rsu-load-time")) 			m_rsuLoadTime=varMap["rsu-load-time"].as<unsigned short>();
 	if (varMap.count("check-valid-vehicles"))	m_validVehicle=true;
 	if (varMap.count("pause"))					m_pause=varMap["pause"].as<unsigned short>();
+	if (varMap.count("print-combination"))		m_printCombination=varMap["print-combination"].as<uint32_t>();
 	if (varMap.count("fcd-data"))				m_fcdFile=varMap["fcd-data"].as<string>();
 	if (varMap.count("rsu-data"))				m_rsuFile=varMap["rsu-data"].as<string>();
 	if (varMap.count("help")) 					{ cout << cliOptDesc; return 1; }
@@ -662,7 +665,7 @@ int main(int argc, char *argv[])
 				if(cID%perMille==0)
 				{
 					percentProgress += 0.1;
-					cout << std::fixed << std::setprecision(2)
+					cout << std::fixed << std::setprecision(1)
 						<< "Progress: " << percentProgress << '%'
 						<< "\tcID: " << cID
 						<< "\tstored: " << stats.size()
@@ -741,6 +744,77 @@ int main(int argc, char *argv[])
 						<< iterStat->over3 << endl;
 	}	// end if(bruteforce)
 
+
+	/* Print statistics about a specified combination.
+	 */
+	if(m_printCombination)
+	{
+		// Clone active RSUs from rsuList to rsuListActive
+		vector<RSU> rsuListActive;	// vector required for [] access
+		for(list<RSU>::iterator iterRSU = rsuList.begin(); iterRSU != rsuList.end(); iterRSU++)
+			if(iterRSU->active) rsuListActive.push_back(*iterRSU);
+
+		// Sort the list of RSUs by ID
+		std::sort(rsuListActive.begin(), rsuListActive.end());
+
+		/*	'cityCoverageSignal': Best signal level at each cell
+		 * 	'cityCoverageCount'	: Number of RSUs covering each cell
+		 */
+		CityMapNum cityCoverageSignal, cityCoverageCount;
+
+		// Tag maps and list RSUs
+		cout << "cID " << m_printCombination << " has the following RSUs active: ";
+		for (int i=0; i<24; i++)
+			if ( ( (m_printCombination >> i) & 1) == 1)
+			{
+				// bit 'i' is a '1'
+				// add car 'i' in 'listOfCars' to the maps
+				applyCountToCityMap(rsuListActive[i].coverage, cityCoverageCount);
+				applyCoverageToCityMap(rsuListActive[i].coverage, cityCoverageSignal);
+
+				cout << rsuListActive[i].id << ' ';
+			}
+		cout << endl;
+
+		// Compute statistics for this combination
+		map<int,unsigned short> covStat = getCoverageStatistics(cityCoverageSignal);
+		unsigned short over1 = getOvercoverageMetric(cityCoverageCount, 1);
+		unsigned short over2 = getOvercoverageMetric(cityCoverageCount, 2);
+		unsigned short over3 = getOvercoverageMetric(cityCoverageCount, 3);
+
+		// Make a record of this combination's statistics.
+		StatEntry ccomb;
+		ccomb.cID = m_printCombination;
+		ccomb.cov0 = covStat[0];
+		ccomb.cov1 = covStat[1];
+		ccomb.cov2 = covStat[2];
+		ccomb.cov3 = covStat[3];
+		ccomb.cov4 = covStat[4];
+		ccomb.cov5 = covStat[5];
+		ccomb.over1 = over1;
+		ccomb.over2 = over2;
+		ccomb.over3 = over3;
+
+		// Print the combination statistics
+		cout << '\n' << "cID\tcov0\tcov1\tcov2\tcov3\tcov4\tcov5\tover1\tover2\tover3" << endl;
+		cout << ccomb.cID << '\t'
+			<< ccomb.cov0 << '\t'
+			<< ccomb.cov1 << '\t'
+			<< ccomb.cov2 << '\t'
+			<< ccomb.cov3 << '\t'
+			<< ccomb.cov4 << '\t'
+			<< ccomb.cov5 << '\t'
+			<< ccomb.over1 << '\t'
+			<< ccomb.over2 << '\t'
+			<< ccomb.over3 << endl;
+
+		// Print the signal map
+		printCityMap(cityCoverageSignal);
+
+		// Print the coverage map
+		printCityMap(cityCoverageCount);
+
+	}
 
 	// Go through every vehicle position and see if it's not inside a building.
 	if(m_validVehicle)
