@@ -34,6 +34,7 @@ int main(int argc, char *argv[])
 	bool m_debugMapBroadcast = false;
 	bool m_networkEnabled = false;
 	bool m_bruteforce = false;
+	bool m_enableMapSpread = true;
 	unsigned short m_accidentTime=60;
 	unsigned short m_stopTime=0;
 	unsigned short m_rsuLoadTime=0;
@@ -52,6 +53,7 @@ int main(int argc, char *argv[])
 		("check-valid-vehicles", "counts number of vehicles in the clear")
 		("enable-network", "enables the network layer and packet transmission")
 		("enable-rsu", "enables the RSU communication code")
+		("disable-map-spread", "stops RSUs from broadcasting their maps")
 		("bruteforce", "bruteforces the best RSU coverage combination")
 		("accident-time", boost::program_options::value<unsigned short>(), "creates an accident at a specific time")
 		("stop-time", boost::program_options::value<unsigned short>(), "stops the simulation at a specific time")
@@ -85,6 +87,7 @@ int main(int argc, char *argv[])
 	if (varMap.count("print-map-time"))		 	m_printMapTime=true;
 	if (varMap.count("enable-network")) 		m_networkEnabled=true;
 	if (varMap.count("enable-rsu")) 			gm_rsu=true;
+	if (varMap.count("disable-map-spread")) 	m_enableMapSpread=false;
 	if (varMap.count("bruteforce")) 			m_bruteforce=true;
 	if (varMap.count("accident-time")) 			m_accidentTime=varMap["accident-time"].as<unsigned short>();
 	if (varMap.count("stop-time")) 				m_stopTime=varMap["stop-time"].as<unsigned short>();
@@ -369,14 +372,15 @@ int main(int argc, char *argv[])
 
 
 				// Coverage map broadcast criteria
-				if( (iterRSU->coveredCellCount - iterRSU->coveredCellsOnLastBroadcast) > 5)
-				{
-					if(gm_debug || m_debugMapBroadcast) cout << "DEBUG Criteria triggered, marking RSU id=" << iterRSU->id << " for coverage map broadcast" << endl;
-					// reset count
-					iterRSU->coveredCellsOnLastBroadcast = iterRSU->coveredCellCount;
-					// update flag
-					iterRSU->triggerBroadcast=true;
-				}
+				if(m_enableMapSpread)
+					if( (iterRSU->coveredCellCount - iterRSU->coveredCellsOnLastBroadcast) > 5)
+					{
+						if(gm_debug || m_debugMapBroadcast) cout << "DEBUG Criteria triggered, marking RSU id=" << iterRSU->id << " for coverage map broadcast" << endl;
+						// reset count
+						iterRSU->coveredCellsOnLastBroadcast = iterRSU->coveredCellCount;
+						// update flag
+						iterRSU->triggerBroadcast=true;
+					}
 				// now that the RSU's local map is updated, apply this map to the global signal map
 				applyCoverageToCityMap(iterRSU->coverage, globalSignal);
 
@@ -386,7 +390,7 @@ int main(int argc, char *argv[])
 		/* Go through each RSU and determine whether to spread its coverage map to its neighbors.
 		 * Also, if a broadcast is triggered, run the decision algorithm on the RSU.
 		 */
-		if(gm_rsu)
+		if(gm_rsu && m_enableMapSpread)
 		{
 			for(list<RSU>::iterator iterRSU = rsuList.begin();
 				iterRSU != rsuList.end();
@@ -629,7 +633,7 @@ int main(int argc, char *argv[])
 			if(iterRSU->active) rsuListActive.push_back(*iterRSU);
 
 		cout << "\nBruteforcing optimal RSU coverage solution..."
-				<< "\n\tWorking with " << rsuListActive.size() << " active RSUs" << endl;
+				<< "\nWorking with " << rsuListActive.size() << " active RSUs" << endl;
 
 		// Don't do more than 32 RSUs.
 		assert(rsuListActive.size() <= 32);
@@ -639,14 +643,31 @@ int main(int argc, char *argv[])
 
 		/* Test all combinations from 1 to 2^RSUs
 		 */
-		if(gm_debug) cout << "\tGoing through combination ID:";
+		if(gm_debug) cout << "Going through combinations..." << endl;
 
 		// Vector to store the statistics of each combination
 		vector<StatEntry> stats;
 
+		// Store the max or min stats that we're keeping in memory. This initializes to max and min values.
+		StatEntry limits;
+
+		// Only print statistics every 1/1000th percent
+		const unsigned int perMille=pow(2,rsuListActive.size())/1000;
+		float percentProgress = 0.0;
+
+		// Go through combinations
 		for(uint32_t cID = 1; cID < pow(2,rsuListActive.size()); cID++)
 		{
-			if(gm_debug) cout << ' ' << cID;
+			if(gm_debug)
+				if(cID%perMille==0)
+				{
+					percentProgress += 0.1;
+					cout << std::fixed << std::setprecision(2)
+						<< "Progress: " << percentProgress << '%'
+						<< "\tcID: " << cID
+						<< "\tstored: " << stats.size()
+						<< endl;
+				}
 
 			/*	'cityCoverageSignal': Best signal level at each cell
 			 * 	'cityCoverageCount'	: Number of RSUs covering each cell
@@ -686,30 +707,35 @@ int main(int argc, char *argv[])
 			 * Discard combinations unless they are better at at least 1 stat on
 			 * what we currently have stored.
 			 */
-
-			// Store the max or min stats that we're keeping in memory. This initializes to max and min values.
-			StatEntry limits;
-
-			if(stats.size())	// if we're not empty
-			{
-				if(gm_debug) cout << '*';	// Marker to signal that we're storing this combination. See below.
-					 if(ccomb.cov0 < limits.cov0 )			{ stats.push_back(ccomb); limits.cov0=ccomb.cov0; }
-				else if(ccomb.cov1 > limits.cov1 )			{ stats.push_back(ccomb); limits.cov1=ccomb.cov1; }
-				else if(ccomb.cov2 > limits.cov2 )			{ stats.push_back(ccomb); limits.cov2=ccomb.cov2; }
-				else if(ccomb.cov3 > limits.cov3 )			{ stats.push_back(ccomb); limits.cov3=ccomb.cov3; }
-				else if(ccomb.cov4 > limits.cov4 )			{ stats.push_back(ccomb); limits.cov4=ccomb.cov4; }
-				else if(ccomb.cov5 > limits.cov5 )			{ stats.push_back(ccomb); limits.cov5=ccomb.cov5; }
-				else if(ccomb.over1 < limits.over1 )		{ stats.push_back(ccomb); limits.over1=ccomb.over1; }
-				else if(ccomb.over2 < limits.over2 )		{ stats.push_back(ccomb); limits.over2=ccomb.over2; }
-				else if(ccomb.over3 < limits.over3 )		{ stats.push_back(ccomb); limits.over3=ccomb.over3; }
-				else if(gm_debug) cout << '\b';		// We're not actually storing, so erase the marker.
-			}
+				 if(ccomb.cov0 < limits.cov0 )			{ stats.push_back(ccomb); limits.cov0=ccomb.cov0;}
+			else if(ccomb.cov1 > limits.cov1 )			{ stats.push_back(ccomb); limits.cov1=ccomb.cov1;}
+			else if(ccomb.cov2 > limits.cov2 )			{ stats.push_back(ccomb); limits.cov2=ccomb.cov2;}
+			else if(ccomb.cov3 > limits.cov3 )			{ stats.push_back(ccomb); limits.cov3=ccomb.cov3;}
+			else if(ccomb.cov4 > limits.cov4 )			{ stats.push_back(ccomb); limits.cov4=ccomb.cov4;}
+			else if(ccomb.cov5 > limits.cov5 )			{ stats.push_back(ccomb); limits.cov5=ccomb.cov5;}
+			else if(ccomb.over1 < limits.over1 )		{ stats.push_back(ccomb); limits.over1=ccomb.over1;}
+			else if(ccomb.over2 < limits.over2 )		{ stats.push_back(ccomb); limits.over2=ccomb.over2;}
+			else if(ccomb.over3 < limits.over3 )		{ stats.push_back(ccomb); limits.over3=ccomb.over3;}
 
 			/* 'stats' now has a mix of the best combinations and some redundant results,
 			 * but the amount of data we store should be much smaller now.
 			 */
 
-			// TODO print result
+			// Print the combinations that were stored.
+			cout << '\n' << "cID\tcov0\tcov1\tcov2\tcov3\tcov4\tcov5\tover1\tover2\tover3" << endl;
+			for(vector<StatEntry>::iterator iterStat = stats.begin();
+					iterStat != stats.end();
+					iterStat++)
+						cout << iterStat->cID << '\t'
+							<< iterStat->cov0 << '\t'
+							<< iterStat->cov1 << '\t'
+							<< iterStat->cov2 << '\t'
+							<< iterStat->cov3 << '\t'
+							<< iterStat->cov4 << '\t'
+							<< iterStat->cov5 << '\t'
+							<< iterStat->over1 << '\t'
+							<< iterStat->over2 << '\t'
+							<< iterStat->over3 << endl;
 
 		}
 		if(gm_debug) cout << endl;
