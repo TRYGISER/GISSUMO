@@ -619,17 +619,18 @@ int main(int argc, char *argv[])
 		float totalTime=0; unsigned short rsuCount=0;
 
 		// Go through each RSU and compute time between creation and last map update
+		cout << "RSU ID\tTime\n";
 		for(list<RSU>::iterator iterRSU = rsuList.begin();
 			iterRSU != rsuList.end();
 			iterRSU++)
-		{
-			float deltaTime = iterRSU->lastTimeUpdated - iterRSU->timeAdded;
+			{
+				float deltaTime = iterRSU->lastTimeUpdated - iterRSU->timeAdded;
 
-			if(gm_debug) cout << "DEBUG RSU id=" << iterRSU->id << " has map time " << deltaTime << endl;
+				cout << iterRSU->id << '\t' << deltaTime << '\n';
 
-			if(deltaTime>0)
-			{ totalTime+=deltaTime; rsuCount++; }
-		}
+				if(deltaTime>0)
+					{ totalTime+=deltaTime; rsuCount++; }
+			}
 
 		if(gm_debug) cout << "DEBUG got total time " << totalTime << " from " << rsuCount << " RSUs" << endl;
 
