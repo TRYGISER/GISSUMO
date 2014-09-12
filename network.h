@@ -6,6 +6,9 @@
 #include "gis.h"
 #include "uvcast.h"
 
+extern unsigned short gm_debug;
+extern bool gm_rsu;
+
 // Called from main, handles the transmission of packets.
 void processNetwork(pqxx::connection &conn, float timestep, list<Vehicle> &vehiclesOnGIS, list<RSU> &rsuList);
 

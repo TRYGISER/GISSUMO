@@ -11,7 +11,7 @@ const ptree& empty_ptree(){
 // Global Simulation Time
 float g_simulationTime=-1;
 // Can extern the debug variable.
-bool gm_debug = false;
+unsigned short gm_debug = 0;
 bool gm_rsu = false;
 // From network
 extern map<float,int> gs_packetPropagationTime;
@@ -38,6 +38,7 @@ int main(int argc, char *argv[])
 	unsigned short m_accidentTime=60;
 	unsigned short m_stopTime=0;
 	unsigned short m_rsuLoadTime=0;
+	unsigned short m_rsuMapDebugId=0;
 	uint32_t m_printCombination = 0;
 	string m_fcdFile = "./fcdoutput.xml";
 	string m_rsuFile = "./rsudata.tsv";
@@ -63,10 +64,11 @@ int main(int argc, char *argv[])
 		("fcd-data", boost::program_options::value<string>(), "floating car data file location")
 		("rsu-data", boost::program_options::value<string>(), "tab-separated file with x,y coordinates of RSUs")
 		("rsu-load-time", boost::program_options::value<unsigned short>(), "loads the RSUs at a specific time")
-		("debug", "enable debug mode")
+		("debug", boost::program_options::value<unsigned short>(), "enable debug mode")
 	    ("debug-locations", "debug vehicle location updates")
 	    ("debug-cell-maps", "debug cell map updates")
 	    ("debug-map-broadcast", "debug coverage map broadcasting")
+		("debug-rsu-map", boost::program_options::value<unsigned short>(), "prints the evolution of a specific RSU's map")
 	    ("help", "give this help list")
 	;
 
@@ -78,10 +80,11 @@ int main(int argc, char *argv[])
 	if(argc==1) { cout << cliOptDesc; return 1; }
 
 	// Process options
-	if (varMap.count("debug")) 					gm_debug=true;
+	if (varMap.count("debug")) 					gm_debug=varMap["debug"].as<unsigned short>();
 	if (varMap.count("debug-locations")) 		m_debugLocations=true;
 	if (varMap.count("debug-cell-maps")) 		m_debugCellMaps=true;
 	if (varMap.count("debug-map-broadcast")) 	m_debugMapBroadcast=true;
+	if (varMap.count("debug-rsu-map"))			m_rsuMapDebugId=varMap["debug-rsu-map"].as<unsigned short>();
 	if (varMap.count("print-vehicle-map")) 		m_printVehicleMap=true;
 	if (varMap.count("print-signal-map")) 		m_printSignalMap=true;
 	if (varMap.count("print-statistics")) 		m_printStatistics=true;
@@ -321,6 +324,8 @@ int main(int argc, char *argv[])
 				// first get the RSU's neighbors' GIDs
 				vector<unsigned int> rsuNeighs = GIS_getPointsInRange(conn,iterRSU->xgeo,iterRSU->ygeo,MAXRANGE,CAR_FEATTYP);
 
+				if(gm_debug>1) cout << "DEBUG2 got " << rsuNeighs.size() << " neighbors of RSU id=" << iterRSU->id << endl;
+
 				// now run through each neighbor
 				for(vector<unsigned int>::iterator neighbor=rsuNeighs.begin();
 						neighbor != rsuNeighs.end();
@@ -365,8 +370,10 @@ int main(int argc, char *argv[])
 						}
 						if(m_debugCellMaps) cout << "DEBUG\t RSU id=" << iterRSU->id << " is now covering " << iterRSU->coveredCellCount << " cells" << endl;
 
-						// update RSU coverage map
-						iterRSU->coverage.map[xrelative][yrelative]=signalneigh;
+						// update RSU coverage map if we recorded a better new signal
+						if(signalneigh>iterRSU->coverage.map[xrelative][yrelative])
+							iterRSU->coverage.map[xrelative][yrelative]=signalneigh;
+
 						if(m_debugCellMaps) cout << "DEBUG\t neighbor gid=" << *neighbor << " on RSU map at xcell=" << xrelative << " ycell=" << yrelative << '\n';
 
 						// increment number of cells this RSU is covering
@@ -387,6 +394,12 @@ int main(int argc, char *argv[])
 				// now that the RSU's local map is updated, apply this map to the global signal map
 				applyCoverageToCityMap(iterRSU->coverage, globalSignal);
 
+				// Debug, print the map of the RSU specified in --debug-rsu-map
+				if(m_rsuMapDebugId && m_rsuMapDebugId==iterRSU->id)
+				{
+					cout << "RSU id=" << iterRSU->id << " covers " << iterRSU->coveredCellCount << " cells:" << endl;
+					printLocalCoverage(iterRSU->coverage);
+				}
 			}	// end for(RSUs)
 
 
@@ -853,6 +866,8 @@ unsigned int deltaSeconds(float c1, float c2)
 
 void printCityMap (CityMapChar cmap)
 {
+	for(short dd=0;dd<CITYWIDTH;dd++)
+		cout << "--"; cout << endl;
 	for(short yy=0;yy<CITYHEIGHT;yy++)
 	{
 		for(short xx=0;xx<CITYWIDTH;xx++)
@@ -863,6 +878,8 @@ void printCityMap (CityMapChar cmap)
 
 void printCityMap (CityMapNum cmap)
 {
+	for(short dd=0;dd<CITYWIDTH;dd++)
+		cout << "--"; cout << endl;
 	for(short yy=0;yy<CITYHEIGHT;yy++)
 	{
 		for(short xx=0;xx<CITYWIDTH;xx++)
@@ -993,7 +1010,10 @@ void printLocalCoverage(CoverageMap coverage)
 	for(short yy=0;yy<PARKEDCELLCOVERAGE;yy++)
 	{
 		for(short xx=0;xx<PARKEDCELLCOVERAGE;xx++)
-			cout << coverage.map[yy][xx] << ' ';
+			if(coverage.map[yy][xx])
+				cout << coverage.map[yy][xx] << ' ';
+			else
+				cout << "  ";
 		cout << '\n';
 	}
 }

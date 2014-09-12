@@ -2,7 +2,7 @@
 #define GIS_H_
 
 #include "gissumo.h"
-extern bool gm_debug;
+extern unsigned short gm_debug;
 extern float g_simulationTime;
 
 // Returns geographic coordinates of a point given its GID.

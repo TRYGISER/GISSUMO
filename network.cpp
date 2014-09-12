@@ -3,8 +3,6 @@
 // Global statistics
 unsigned int s_packetCount = 0;
 map<float,int> gs_packetPropagationTime;
-extern bool gm_debug;
-extern bool gm_rsu;
 
 void processNetwork(pqxx::connection &conn, float timestep, list<Vehicle> &vehiclesOnGIS, list<RSU> &rsuList)
 {
