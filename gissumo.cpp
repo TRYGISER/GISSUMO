@@ -180,6 +180,7 @@ int main(int argc, char *argv[])
 	list<Vehicle> vehiclesOnGIS;	// vehicles we've processed from SUMO to GIS
 	CityMapChar vehicleLocations; 		// 2D map for vehicle locations
 	CityMapNum globalSignal;			// 2D map for global signal quality
+	// TODO signal map might need to be reset on each timestep
 
 	// list of events
 	EventList events;
@@ -318,6 +319,7 @@ int main(int argc, char *argv[])
 
 		/* Go through each RSU and update its coverage map.
 		 * This is computed from the vehicles the RSU sees, and their signal strength.
+		 * If the RSU is inactive only the coverage map is updated, nothing else.
 		 */
 		if(gm_rsu)
 			for(list<RSU>::iterator iterRSU = rsuList.begin();
@@ -373,7 +375,7 @@ int main(int argc, char *argv[])
 						}
 						if(m_debugCellMaps) cout << "DEBUG\t RSU id=" << iterRSU->id << " is now covering " << iterRSU->coveredCellCount << " cells" << endl;
 
-						// update RSU coverage map if we recorded a better new signal
+						// update RSU coverage map if we recorded a better signal
 						if(signalneigh>iterRSU->coverage.map[xrelative][yrelative])
 							iterRSU->coverage.map[xrelative][yrelative]=signalneigh;
 
@@ -384,18 +386,22 @@ int main(int argc, char *argv[])
 				}	// end for(RSU neighbors)
 
 
-				// Coverage map broadcast criteria
-				if(m_enableMapSpread)
-					if( (iterRSU->coveredCellCount - iterRSU->coveredCellsOnLastBroadcast) > 5)
-					{
-						if(gm_debug || m_debugMapBroadcast) cout << "DEBUG Criteria triggered, marking RSU id=" << iterRSU->id << " for coverage map broadcast" << endl;
-						// reset count
-						iterRSU->coveredCellsOnLastBroadcast = iterRSU->coveredCellCount;
-						// update flag
-						iterRSU->triggerBroadcast=true;
-					}
-				// now that the RSU's local map is updated, apply this map to the global signal map
-				applyCoverageToCityMap(iterRSU->coverage, globalSignal);
+				if(iterRSU->active)		// inactive RSUs don't broadcast their maps
+				{
+					// Coverage map broadcast criteria
+					if(m_enableMapSpread)
+							if( (iterRSU->coveredCellCount - iterRSU->coveredCellsOnLastBroadcast) > 5)
+							{
+								if(gm_debug || m_debugMapBroadcast) cout << "DEBUG Criteria triggered, marking RSU id=" << iterRSU->id << " for coverage map broadcast" << endl;
+								// reset count
+								iterRSU->coveredCellsOnLastBroadcast = iterRSU->coveredCellCount;
+								// update flag
+								iterRSU->triggerBroadcast=true;
+							}
+
+					// now that the RSU's local map is updated, apply this map to the global signal map
+					applyCoverageToCityMap(iterRSU->coverage, globalSignal);
+				}
 
 				// Debug, print the map of the RSU specified in --debug-rsu-map
 				if(m_rsuMapDebugId && m_rsuMapDebugId==iterRSU->id)
@@ -409,6 +415,7 @@ int main(int argc, char *argv[])
 		/* Go through each RSU and determine whether to spread its coverage map to its neighbors.
 		 * Also, if a broadcast is triggered, run the decision algorithm (if mode=1) on the RSU.
 		 */
+		// TODO: on decision mode 1, the decision algorithm must be rerun periodically
 		if(gm_rsu && m_enableMapSpread)
 		{
 			for(list<RSU>::iterator iterRSU = rsuList.begin();
@@ -420,22 +427,32 @@ int main(int argc, char *argv[])
 					// reset broadcast flag
 					iterRSU->triggerBroadcast=false;
 
-					// get the list of RSU neighbors
-					vector<RSU*> neighborRSUs = getRSUsInRange(conn, rsuList, *iterRSU);
+					// The map that we're broadcasting to neighbors.
+					CoverageMap mapToBroadcast = iterRSU->coverage;
+
+
+					/* Decision mode 1: decide every time our map updates and we broadcast
+					 * Should probably decide when we get a neighbor map update too
+					 */
+					if(m_decisionMode==1)
+						iterRSU->active = decisionAlgorithm(*iterRSU);
+
+					// If this RSU turns inactive, broadcast an empty map to our neighbors.
+					if(iterRSU->active==false)
+					{
+						if(gm_debug) cout << "DEBUG Turning off RSU id=" << iterRSU->id << " and broadcasting empty map." << endl;
+						mapToBroadcast = CoverageMap();
+					}
+					// end decision
+
+
+					// Broadcast the map in mapToBroadcast
+					// Get the list of RSU neighbors
+					vector<RSU*> neighborRSUs = getRSUsInRange(conn, rsuList, *iterRSU, RSU_ALL);
 					for(vector<RSU*>::iterator iterNeigh = neighborRSUs.begin();
 						iterNeigh != neighborRSUs.end();
 						iterNeigh++)
-					{
-						// send each neighbor our updated coverage map
-						(*iterNeigh)->neighborMaps[iterRSU->id] = iterRSU->coverage;
-
-					}	// for(neighs)
-
-				/* Decision mode 1: decide every time our map updates
-				 * TODO: Should probably decide when we get a neighbor map update too
-				 */
-				if(m_decisionMode==1)
-					iterRSU->active = decisionAlgorithm(*iterRSU);
+							(*iterNeigh)->neighborMaps[iterRSU->id] = mapToBroadcast;	// send each neighbor our updated coverage map
 
 				}	// if(triggerBroadcast)
 			}	// for(RSUs)
@@ -903,7 +920,28 @@ void printCityMap (CityMapNum cmap)
 				cout << "  ";
 		cout << '\n';
 	}
+	for(short dd=0;dd<CITYWIDTH;dd++)
+		cout << "--"; cout << endl;
 }
+
+
+void printLocalCoverage(CoverageMap coverage)
+{
+	for(short dd=0;dd<PARKEDCELLCOVERAGE;dd++)
+		cout << "--"; cout << '\n';
+	for(short yy=0;yy<PARKEDCELLCOVERAGE;yy++)
+	{
+		for(short xx=0;xx<PARKEDCELLCOVERAGE;xx++)
+			if(coverage.map[xx][yy])
+				cout << coverage.map[xx][yy] << ' ';
+			else
+				cout << "  ";
+		cout << '\n';
+	}
+	for(short dd=0;dd<PARKEDCELLCOVERAGE;dd++)
+		cout << "--"; cout << '\n';
+}
+
 
 unsigned short getSignalQuality(unsigned short distance, bool lineOfSight)
 {
@@ -1014,24 +1052,22 @@ bool decisionAlgorithm(RSU &rsu)
 	}
 
 	// Decide
-	// based on percentage? mean coverage? fixed number of cells?
+	// If > 10% of our cell coverage is exclusive to us, don't shut down.
+	float percentExclusive = (float)exclusiveCoverage/(float)rsu.coveredCellCount;
 
-	return true;
+	if(gm_debug) cout << "DEBUG decisionAlgorithm"
+			<< " RSU id " << rsu.id
+			<< " coveredCellCount " << rsu.coveredCellCount
+			<< " exclusiveCoverage " << exclusiveCoverage
+			<< " percentExclusive " << percentExclusive
+			<< endl;
+
+	if(percentExclusive > 0.10)
+		return true;
+	else
+		return false;
 }
 
-
-void printLocalCoverage(CoverageMap coverage)
-{
-	for(short yy=0;yy<PARKEDCELLCOVERAGE;yy++)
-	{
-		for(short xx=0;xx<PARKEDCELLCOVERAGE;xx++)
-			if(coverage.map[yy][xx])
-				cout << coverage.map[yy][xx] << ' ';
-			else
-				cout << "  ";
-		cout << '\n';
-	}
-}
 
 void printVehicleDetails(Vehicle veh)
 {

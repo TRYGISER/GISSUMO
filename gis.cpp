@@ -261,7 +261,7 @@ vector<Vehicle*> getVehiclesNearPoint(pqxx::connection &conn, list<Vehicle> &veh
 	return neighbors;
 }
 
-vector<RSU*> getRSUsInRange(pqxx::connection &conn, list<RSU> &rsuList, const RoadObject src)
+vector<RSU*> getRSUsInRange(pqxx::connection &conn, list<RSU> &rsuList, const RoadObject src, RSUcriteria crit)
 {
 	/* Step 1: ask GIS for neighbors
 	 * Step 2: match gid to RSU objects
@@ -287,7 +287,10 @@ vector<RSU*> getRSUsInRange(pqxx::connection &conn, list<RSU> &rsuList, const Ro
 				);
 
 		if(iterRSU != rsuList.end())	// if it gets to end() then we found no RSUs
-			if(iterRSU->active)	// we want active RSUs only
+			if(		(crit==RSU_ACTIVE && iterRSU->active) ||
+					(crit==RSU_INACTIVE && !iterRSU->active) ||
+					(crit==RSU_ALL)
+				)	// select RSUs according to criteria
 			{
 				// Step 3
 				// get the distance, obstruction, and signal to src

@@ -5,6 +5,8 @@
 extern unsigned short gm_debug;
 extern float g_simulationTime;
 
+enum RSUcriteria {RSU_ALL, RSU_ACTIVE, RSU_INACTIVE};
+
 // Returns geographic coordinates of a point given its GID.
 void GIS_getPointCoords(pqxx::connection &c, unsigned int gid, float &xgeo, float &ygeo);
 
@@ -39,6 +41,6 @@ vector<Vehicle*> getVehiclesInRange(pqxx::connection &conn, list<Vehicle> &vehic
 vector<Vehicle*> getVehiclesNearPoint(pqxx::connection &conn, list<Vehicle> &vehiclesOnGIS, const float xgeo, const float ygeo, const unsigned short range);
 
 // Returns a list of pointers to RSUs that we can communicate with.
-vector<RSU*> getRSUsInRange(pqxx::connection &conn, list<RSU> &rsuList, const RoadObject src);
+vector<RSU*> getRSUsInRange(pqxx::connection &conn, list<RSU> &rsuList, const RoadObject src, RSUcriteria crit);
 
 #endif /* GIS_H_ */
