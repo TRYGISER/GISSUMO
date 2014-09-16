@@ -828,6 +828,11 @@ int main(int argc, char *argv[])
 			<< ccomb.over2 << '\t'
 			<< ccomb.over3 << endl;
 
+		// Mark the selected RSUs as 'R' in the map. Print routines replace '-1' with 'R'.
+		for (int i=0; i<24; i++)
+			if ( ( (m_printCombination >> i) & 1) == 1)
+				cityCoverageSignal.map[rsuListActive[i].xcell][rsuListActive[i].ycell] = -1;
+
 		// Print the signal map
 		printCityMap(cityCoverageSignal);
 
@@ -890,8 +895,12 @@ void printCityMap (CityMapNum cmap)
 	for(short yy=0;yy<CITYHEIGHT;yy++)
 	{
 		for(short xx=0;xx<CITYWIDTH;xx++)
-			if(cmap.map[xx][yy]>0) cout << cmap.map[xx][yy] << ' ';
-			else cout << "  ";
+			if(cmap.map[xx][yy]>0)
+				cout << cmap.map[xx][yy] << ' ';
+			else if(cmap.map[xx][yy]==-1)
+				cout << "R ";
+			else
+				cout << "  ";
 		cout << '\n';
 	}
 }
@@ -984,29 +993,28 @@ bool decisionAlgorithm(RSU &rsu)
 	for(map<unsigned short, CoverageMap>::iterator iterNeighMap = rsu.neighborMaps.begin();
 			iterNeighMap != rsu.neighborMaps.end();
 			iterNeighMap++)
-	{
-		applyCoverageToCityMap(iterNeighMap->second, rsuMap);
-	}
+				applyCoverageToCityMap(iterNeighMap->second, rsuMap);
 
 	// Count how many cells we cover that aren't covered already
-	// TODO needs verification
-	short xstart = rsu.xcell - PARKEDCELLRANGE;
-	short ystart = rsu.ycell - PARKEDCELLRANGE;
+	unsigned short exclusiveCoverage=0;
+	for(short xx=0; xx<PARKEDCELLCOVERAGE; xx++)
+		for(short yy=0; yy<PARKEDCELLCOVERAGE; yy++)
+			if(rsu.coverage.map[xx][yy])	// if our RSU is covering this cell
+				if(!rsuMap.map[rsu.xcell-PARKEDCELLRANGE+xx][rsu.ycell-PARKEDCELLRANGE+yy])	// and if it's not covered by someone else already
+					exclusiveCoverage++;
 
-	assert(xstart>=0); assert(ystart>=0);
-
-	for(short xx=xstart; xx < xstart+PARKEDCELLCOVERAGE; xx++)
-		for(short yy=ystart; yy < ystart+PARKEDCELLCOVERAGE; yy++)
-			;
-
-	// better:
-	for(short xx=-PARKEDCELLCOVERAGE; xx<PARKEDCELLCOVERAGE; xx++)
-		for(short yy=-PARKEDCELLCOVERAGE; yy<PARKEDCELLCOVERAGE; yy++)
-			// don't need xstart nor ystart here, work with relative numbers. xx for RSU map, rsu.xcell+xx for city map (?)
-			;
+	// DEBUG2: print the city map and the local RSU map, and check count
+	if(gm_debug>1)
+	{
+		cout << "DEBUG2 Exclusive coverage count: " << exclusiveCoverage << endl;
+		cout << "DEBUG2 Local city map:" << endl;
+		printCityMap(rsuMap);
+		cout << "DEBUG2 Local RSU map:" << endl;
+		printLocalCoverage(rsu.coverage);
+	}
 
 	// Decide
-
+	// based on percentage? mean coverage? fixed number of cells?
 
 	return true;
 }
