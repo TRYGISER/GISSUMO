@@ -52,6 +52,9 @@ unsigned short GIS_distanceToPointGID(pqxx::connection &c, float xx, float yy, u
 		);
 	txn1.commit();
 
+	if(r1[0][0].size()==0)
+		{cout << "ERROR distanceToPointGID" << endl; exit(1);}
+
 	std::string targetWKT(r1[0][0].as<string>());
 
 	// now get the distance, convert to meters, and return

@@ -39,6 +39,7 @@ int main(int argc, char *argv[])
 	unsigned short m_stopTime=0;
 	unsigned short m_rsuLoadTime=0;
 	unsigned short m_rsuMapDebugId=0;
+	unsigned short m_decisionMode=0;
 	uint32_t m_printCombination = 0;
 	string m_fcdFile = "./fcdoutput.xml";
 	string m_rsuFile = "./rsudata.tsv";
@@ -56,6 +57,7 @@ int main(int argc, char *argv[])
 		("check-valid-vehicles", "counts number of vehicles in the clear")
 		("enable-network", "enables the network layer and packet transmission")
 		("enable-rsu", "enables the RSU communication code")
+		("decision-mode", boost::program_options::value<unsigned short>(), "1: always deciding, 2: permanent shutdown")
 		("disable-map-spread", "stops RSUs from broadcasting their maps")
 		("bruteforce", "bruteforces the best RSU coverage combination")
 		("accident-time", boost::program_options::value<unsigned short>(), "creates an accident at a specific time")
@@ -92,6 +94,7 @@ int main(int argc, char *argv[])
 	if (varMap.count("print-map-time"))		 	m_printMapTime=true;
 	if (varMap.count("enable-network")) 		m_networkEnabled=true;
 	if (varMap.count("enable-rsu")) 			gm_rsu=true;
+	if (varMap.count("decision-mode")) 			m_decisionMode=varMap["decision-mode"].as<unsigned short>();
 	if (varMap.count("disable-map-spread")) 	m_enableMapSpread=false;
 	if (varMap.count("bruteforce")) 			m_bruteforce=true;
 	if (varMap.count("accident-time")) 			m_accidentTime=varMap["accident-time"].as<unsigned short>();
@@ -104,7 +107,7 @@ int main(int argc, char *argv[])
 	if (varMap.count("rsu-data"))				m_rsuFile=varMap["rsu-data"].as<string>();
 	if (varMap.count("help")) 					{ cout << cliOptDesc; return 1; }
 
-	if (gm_debug) cout << "BEGIN FCD FILE " << m_fcdFile << endl;
+	cout << "BEGIN FCD FILE " << m_fcdFile << endl;
 
 	/* Parse SUMO logs
 	 * This expects SUMO's floating car data (FCD) output with geographic
@@ -154,7 +157,7 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	if(gm_debug) cout << "Read " << fcd_output.size() << " records from " << m_fcdFile << endl;
+	cout << "Read " << fcd_output.size() << " records from " << m_fcdFile << endl;
 
 	/* Open a connection to PostgreSQL
 	 * A password can be added to this string.
@@ -404,7 +407,7 @@ int main(int argc, char *argv[])
 
 
 		/* Go through each RSU and determine whether to spread its coverage map to its neighbors.
-		 * Also, if a broadcast is triggered, run the decision algorithm on the RSU.
+		 * Also, if a broadcast is triggered, run the decision algorithm (if mode=1) on the RSU.
 		 */
 		if(gm_rsu && m_enableMapSpread)
 		{
@@ -428,10 +431,13 @@ int main(int argc, char *argv[])
 
 					}	// for(neighs)
 
-				// Decide whether to remain active or to shut down.
-				iterRSU->active = decisionAlgorithm(*iterRSU);
+				/* Decision mode 1: decide every time our map updates
+				 * TODO: Should probably decide when we get a neighbor map update too
+				 */
+				if(m_decisionMode==1)
+					iterRSU->active = decisionAlgorithm(*iterRSU);
 
-				}	// if(false)
+				}	// if(triggerBroadcast)
 			}	// for(RSUs)
 		}	// if(m_rsu)
 
