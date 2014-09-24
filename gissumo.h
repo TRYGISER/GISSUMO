@@ -175,6 +175,8 @@ public:
 	unsigned short coveredCellsOnLastBroadcast = 0;
 	// flag to determine whether to trigger a broadcast
 	bool triggerBroadcast=false;
+	// flag to determine whether to trigger a decision
+	bool triggerDecision=false;
 	// last time this RSU's coverage map was updated, for statistics
 	float lastTimeUpdated=0;
 };

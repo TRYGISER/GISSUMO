@@ -66,8 +66,8 @@ void rebroadcastPacket(pqxx::connection &conn, float timestep, list<Vehicle> &ve
 
 	if(gm_rsu)
 	{
-		// get our RSU neighbor list
-		vector<RSU*> RSUneighbors = getRSUsInRange(conn, rsuList, *veh);
+		// Get our RSU neighbor list. On the network layer, only use active RSUs.
+		vector<RSU*> RSUneighbors = getRSUsInRange(conn, rsuList, *veh, RSU_ACTIVE);
 		// Go through each RSU. If the packet isn't the same as ours, send our packet to it.
 		for(vector<RSU*>::iterator iter=RSUneighbors.begin(); iter!=RSUneighbors.end(); iter++)
 			if((*iter)->active)
@@ -139,7 +139,7 @@ void initialBroadcast(pqxx::connection &conn, float timestep, list<Vehicle> &veh
 		/* Get RSU neighbors and pass the message on to them. Don't call InitialBroadcast on RSUs.
 		 */
 		// Get our RSU neighbor list
-		vector<RSU*> RSUneighbors = getRSUsInRange(conn, rsuList, *selfVeh);
+		vector<RSU*> RSUneighbors = getRSUsInRange(conn, rsuList, *selfVeh, RSU_ACTIVE);
 		// Go through each RSU. If the packet isn't the same as ours, send our packet to it.
 		for(vector<RSU*>::iterator iter=RSUneighbors.begin(); iter!=RSUneighbors.end(); iter++)
 			if((*iter)->active)

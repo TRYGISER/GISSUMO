@@ -412,52 +412,70 @@ int main(int argc, char *argv[])
 			}	// end for(RSUs)
 
 
-		/* Go through each RSU and determine whether to spread its coverage map to its neighbors.
-		 * Also, if a broadcast is triggered, run the decision algorithm (if mode=1) on the RSU.
+		/* Go through each RSU.
+		 * - If criteria match for a decision, decide.
+		 * - If the RSU is going inactive from the decision, prepare to broadcast an empty map.
+		 * - If criteria match for the map to be broadcast, broadcast.
+		 * No decisions without map spreading.
 		 */
-		// TODO: on decision mode 1, the decision algorithm must be rerun periodically
 		if(gm_rsu && m_enableMapSpread)
 		{
 			for(list<RSU>::iterator iterRSU = rsuList.begin();
 				iterRSU != rsuList.end();
 				iterRSU++)
 			{
-				if(iterRSU->triggerBroadcast)
+				// Hold the previous status
+				bool lastRSUstatus=iterRSU->active;
+
+				/* Run the decision if we got a trigger to broadcast or to decide
+				 */
+				if( m_decisionMode==1 && (iterRSU->triggerBroadcast || iterRSU->triggerDecision) )
+					iterRSU->active = decisionAlgorithm(*iterRSU);
+
+				// Inform if the RSU switched states now.
+				if(gm_debug)
 				{
-					// reset broadcast flag
-					iterRSU->triggerBroadcast=false;
+					if(iterRSU->active==false && lastRSUstatus==true)
+						cout << "DEBUG Turning OFF RSU id=" << iterRSU->id << " and broadcasting empty map." << endl;
+					else if(iterRSU->active==true && lastRSUstatus==false)
+						cout << "DEBUG Turning ON RSU id=" << iterRSU->id << " and broadcasting complete map." << endl;
+				}
 
-					// The map that we're broadcasting to neighbors.
-					CoverageMap mapToBroadcast = iterRSU->coverage;
-
-
-					/* Decision mode 1: decide every time our map updates and we broadcast
-					 * Should probably decide when we get a neighbor map update too
-					 */
-					if(m_decisionMode==1)
-						iterRSU->active = decisionAlgorithm(*iterRSU);
-
-					// If this RSU turns inactive, broadcast an empty map to our neighbors.
-					if(iterRSU->active==false)
+				/* What triggers a broadcast:
+				 * RSU active to inactive
+				 * RSU inactive to active
+				 * RSU triggerBroadcast & RSU active
+				 */
+				if( (iterRSU->active==false && lastRSUstatus==true) ||
+					(iterRSU->active==true && lastRSUstatus==false) ||
+					(iterRSU->triggerBroadcast && iterRSU->active) )
 					{
-						if(gm_debug) cout << "DEBUG Turning off RSU id=" << iterRSU->id << " and broadcasting empty map." << endl;
-						mapToBroadcast = CoverageMap();
-					}
-					// end decision
+						// The map that we're broadcasting to neighbors.
+						CoverageMap mapToBroadcast;
 
+						// Inactive RSUs must always broadcast empty maps
+						if(iterRSU->active)
+							mapToBroadcast = iterRSU->coverage;	// full map
+						else
+							mapToBroadcast = CoverageMap();		// empty map
 
-					// Broadcast the map in mapToBroadcast
-					// Get the list of RSU neighbors
-					vector<RSU*> neighborRSUs = getRSUsInRange(conn, rsuList, *iterRSU, RSU_ALL);
-					for(vector<RSU*>::iterator iterNeigh = neighborRSUs.begin();
-						iterNeigh != neighborRSUs.end();
-						iterNeigh++)
-							(*iterNeigh)->neighborMaps[iterRSU->id] = mapToBroadcast;	// send each neighbor our updated coverage map
+						// Broadcast the map in mapToBroadcast
+						// Get the list of all RSU neighbors
+						vector<RSU*> neighborRSUs = getRSUsInRange(conn, rsuList, *iterRSU, RSU_ALL);
+						for(vector<RSU*>::iterator iterNeigh = neighborRSUs.begin();
+							iterNeigh != neighborRSUs.end();
+							iterNeigh++)
+							{
+								(*iterNeigh)->neighborMaps[iterRSU->id] = mapToBroadcast;	// send each neighbor our updated coverage map
+								(*iterNeigh)->triggerDecision = true; // trigger a decision on the neighbor
+							}
+					} 	// end if(broadcast)
 
-				}	// if(triggerBroadcast)
-			}	// for(RSUs)
-		}	// if(m_rsu)
-
+				// Reset flags
+				iterRSU->triggerBroadcast=false;
+				iterRSU->triggerDecision=false;
+			}
+		}
 
 
 		/* Network layer.
