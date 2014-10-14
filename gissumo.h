@@ -269,6 +269,9 @@ unsigned short getOvercoverageMetric (CityMapNum cmap, short cap);
 // Run the decision algorithm to determine whether an RSU should remain active.
 bool decisionAlgorithm(RSU &rsu);
 
+// A decision algorithm by points.
+bool pointDecisionAlgorithm(RSU &rsu);
+
 // Prints ASCII of a local coverage map.
 void printLocalCoverage(CoverageMap coverage);
 

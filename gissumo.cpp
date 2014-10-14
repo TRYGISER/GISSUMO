@@ -179,8 +179,6 @@ int main(int argc, char *argv[])
 	list<RSU> rsuList;			// vector to hold list of RSUs
 	list<Vehicle> vehiclesOnGIS;	// vehicles we've processed from SUMO to GIS
 	CityMapChar vehicleLocations; 		// 2D map for vehicle locations
-	CityMapNum globalSignal;			// 2D map for global signal quality
-	// TODO signal map might need to be reset on each timestep
 
 	// list of events
 	EventList events;
@@ -206,6 +204,9 @@ int main(int argc, char *argv[])
 		// Update global simulation time.
 		g_simulationTime = iterTime->time;
 		if(gm_debug) cout << "\nDEBUG Timestep time=" << iterTime->time << endl;
+
+		// Signal map needs to be reset on each timestep
+		CityMapNum globalSignal;			// 2D map for global signal quality
 
 		/* Only load RSUs at specified time
 		 */
@@ -1085,6 +1086,60 @@ bool decisionAlgorithm(RSU &rsu)
 	else
 		return false;
 }
+
+bool pointDecisionAlgorithm(RSU &rsu)
+{
+	// Create a blank map
+	CityMapNum signalMap;
+	CityMapNum redundancyMap;
+
+	// Place neighbor local coverage maps on the full map. Create a redundancy map too.
+	for(map<unsigned short, CoverageMap>::iterator iterNeighMap = rsu.neighborMaps.begin();
+			iterNeighMap != rsu.neighborMaps.end();
+			iterNeighMap++)
+			{
+				applyCoverageToCityMap(iterNeighMap->second, signalMap);
+				applyCountToCityMap(iterNeighMap->second, redundancyMap);
+			}
+
+
+	/* Points algorithm.
+	 * Classify RSU quality.
+	 * Covering a new cell: points equal to signal strength.
+	 * Improving coverage: points equal to delta between old and new coverage.
+	 * Adding redundancy: variable, 1 negative point per increase in redundancy >1.
+	 *
+	 * Consider limiting redundancy to >2, and increasing redundancy penalty.
+	 */
+	/* Two possibilities:
+	 * - Current impact to the network, considering neighbors.
+	 * - Value of the RSU when isolated.
+	 */
+	signed short utility=0, isolatedUtility=0;
+
+	for(short xx=0; xx<PARKEDCELLCOVERAGE; xx++)
+		for(short yy=0; yy<PARKEDCELLCOVERAGE; yy++)
+			if(rsu.coverage.map[xx][yy]) // if we're covering this cell
+			{
+				// if a neighbor is covering the cell too and is worse than our coverage
+				if(signalMap.map[rsu.xcell-PARKEDCELLRANGE+xx][rsu.ycell-PARKEDCELLRANGE+yy] < rsu.coverage.map[xx][yy])
+					// add delta to the count
+					utility += rsu.coverage.map[xx][yy] - signalMap.map[rsu.xcell-PARKEDCELLRANGE+xx][rsu.ycell-PARKEDCELLRANGE+yy];
+				else
+					// just add our own coverage to the count
+					utility += rsu.coverage.map[xx][yy];
+
+				// Add redundancy penalty. If there's an RSU covering this area already, penalize.
+				// TODO: square the new redundancy so as to more strongly penalize redundancy.
+				// e.g.: going to 4 -> penalty 16
+				if(redundancyMap[rsu.xcell-PARKEDCELLRANGE+xx][rsu.ycell-PARKEDCELLRANGE+yy])
+					utility -= redundancyMap[rsu.xcell-PARKEDCELLRANGE+xx][rsu.ycell-PARKEDCELLRANGE+yy];
+			}
+
+
+
+}
+
 
 
 void printVehicleDetails(Vehicle veh)
