@@ -39,7 +39,7 @@ int main(int argc, char *argv[])
 	unsigned short m_stopTime=0;
 	unsigned short m_rsuLoadTime=0;
 	unsigned short m_rsuMapDebugId=0;
-	unsigned short m_decisionMode=0;
+	unsigned short m_decisionMode=1;
 	uint32_t m_printCombination = 0;
 	string m_fcdFile = "./fcdoutput.xml";
 	string m_rsuFile = "./rsudata.tsv";
@@ -320,6 +320,7 @@ int main(int argc, char *argv[])
 
 		/* Go through each RSU and update its coverage map.
 		 * This is computed from the vehicles the RSU sees, and their signal strength.
+		 * If the RSU is active, trigger map broadcasts on criteria (5 new cells covered).
 		 * If the RSU is inactive only the coverage map is updated, nothing else.
 		 */
 		if(gm_rsu)
@@ -431,7 +432,8 @@ int main(int argc, char *argv[])
 				/* Run the decision if we got a trigger to broadcast or to decide
 				 */
 				if( m_decisionMode==1 && (iterRSU->triggerBroadcast || iterRSU->triggerDecision) )
-					iterRSU->active = decisionAlgorithm(*iterRSU);
+					iterRSU->active = pointDecisionAlgorithm(*iterRSU);		// Use classifier
+//					iterRSU->active = decisionAlgorithm(*iterRSU);			// Use cell overlap
 
 				// Inform if the RSU switched states now.
 				if(gm_debug)
@@ -536,7 +538,7 @@ int main(int argc, char *argv[])
 		}
 
 
-		/* Compute and print statistics.
+		/* Compute and print timestep statistics.
 		 *
 		 */
 		if(m_printStatistics)
@@ -633,16 +635,79 @@ int main(int argc, char *argv[])
 		 */
 
 		if(m_stopTime && iterTime->time>=m_stopTime)
+		{
 			break;
+		}
 	}	// end for(timestep)
 
 
 	/* * * TIMESTEP LOOP END * * */
 
 
+	/* Print final coverage map, coverage metrics, redundancy, etc.
+	 */
+	if(gm_rsu && m_enableMapSpread && m_printEndStatistics)
+	{
+
+		// Go through active RSUs and place them in the global map
+		CityMapNum cityCoverageSignal, cityCoverageCount;
+
+		cout << "Active RSUs: ";
+		for(list<RSU>::iterator iterRSU=rsuList.begin(); iterRSU != rsuList.end(); iterRSU++)
+			if(iterRSU->active)
+			{
+				cout << iterRSU->id << ' ';
+				applyCountToCityMap(iterRSU->coverage, cityCoverageCount);
+				applyCoverageToCityMap(iterRSU->coverage, cityCoverageSignal);
+			}
+		cout << endl;
+
+		// Compute statistics from the coverage maps
+		map<int,unsigned short> covStat = getCoverageStatistics(cityCoverageSignal);
+		unsigned short over1 = getOvercoverageMetric(cityCoverageCount, 1);
+		unsigned short over2 = getOvercoverageMetric(cityCoverageCount, 2);
+		unsigned short over3 = getOvercoverageMetric(cityCoverageCount, 3);
+
+
+		// Print the statistics
+		cout << '\n' << "STAT\tcov0\tcov1\tcov2\tcov3\tcov4\tcov5\tover1\tover2\tover3" << endl;
+		cout << '\t'
+			<< covStat[0] << '\t'
+			<< covStat[1] << '\t'
+			<< covStat[2] << '\t'
+			<< covStat[3] << '\t'
+			<< covStat[4] << '\t'
+			<< covStat[5] << '\t'
+			<< over1 << '\t'
+			<< over2 << '\t'
+			<< over3 << endl;
+
+		// Print each RSUs utility scores
+		if(gm_debug)
+		{
+			cout << "RSU scores: \n" << "ID\tactive\tutility\tutilPos\tutilNeg\n";
+			for(list<RSU>::iterator iterRSU=rsuList.begin(); iterRSU != rsuList.end(); iterRSU++)
+			cout << iterRSU->id
+				<< '\t' << (iterRSU->active?"yes":"no")
+				<< '\t' << iterRSU->utility
+				<< '\t' << iterRSU->utilPos
+				<< '\t' << iterRSU->utilNeg
+				<< endl;
+		}
+
+		// TODO: debug: compute real utility vs local 'believed' utility
+
+		// Print the signal map
+		printCityMap(cityCoverageSignal);
+
+		// Print the coverage map
+		printCityMap(cityCoverageCount);
+	}
+
+
 	/* Print final count of packet propagation times.
 	 */
-	if(m_printEndStatistics)
+	if(m_networkEnabled && m_printEndStatistics)
 	{
 		cout << "STAT PacketPropagationTime"
 				<< "\nCount\tTime" << endl;
@@ -650,8 +715,8 @@ int main(int argc, char *argv[])
 				mapIter!=gs_packetPropagationTime.end();
 				mapIter++)
 			cout << mapIter->second << '\t' << mapIter->first << '\n';
-
 	}
+
 
 	/* Compute RSU coverage map time (RSU time of creation - RSU last map update time)
 	 */
@@ -1039,6 +1104,8 @@ void applyCountToCityMap (CoverageMap coverage, CityMapNum &city)
 
 bool decisionAlgorithm(RSU &rsu)
 {
+	// Returns whether the RSU should remain active (true) or not (false).
+
 	/* Should be enough to work with the RSU's local neighbor maps.
 	 * For more elaborate algorithms, pass the GIS connection and the list of RSUs.
 	 */
@@ -1089,19 +1156,7 @@ bool decisionAlgorithm(RSU &rsu)
 
 bool pointDecisionAlgorithm(RSU &rsu)
 {
-	// Create a blank map
-	CityMapNum signalMap;
-	CityMapNum redundancyMap;
-
-	// Place neighbor local coverage maps on the full map. Create a redundancy map too.
-	for(map<unsigned short, CoverageMap>::iterator iterNeighMap = rsu.neighborMaps.begin();
-			iterNeighMap != rsu.neighborMaps.end();
-			iterNeighMap++)
-			{
-				applyCoverageToCityMap(iterNeighMap->second, signalMap);
-				applyCountToCityMap(iterNeighMap->second, redundancyMap);
-			}
-
+	// Returns whether the RSU should remain active (true) or not (false).
 
 	/* Points algorithm.
 	 * Classify RSU quality.
@@ -1115,7 +1170,25 @@ bool pointDecisionAlgorithm(RSU &rsu)
 	 * - Current impact to the network, considering neighbors.
 	 * - Value of the RSU when isolated.
 	 */
-	signed short utility=0, isolatedUtility=0;
+
+
+	// Create a blank map
+	CityMapNum signalMap;
+	CityMapNum redundancyMap;
+
+	// Place neighbor local coverage maps on the full map. Create a redundancy map too.
+	for(map<unsigned short, CoverageMap>::iterator iterNeighMap = rsu.neighborMaps.begin();
+			iterNeighMap != rsu.neighborMaps.end();
+			iterNeighMap++)
+			{
+				applyCoverageToCityMap(iterNeighMap->second, signalMap);
+				applyCountToCityMap(iterNeighMap->second, redundancyMap);
+			}
+
+	// Compute utility
+	signed short utility=0;
+//	signed short isolatedUtility=0;
+	signed short debugPos=0, debugNeg=0;
 
 	for(short xx=0; xx<PARKEDCELLCOVERAGE; xx++)
 		for(short yy=0; yy<PARKEDCELLCOVERAGE; yy++)
@@ -1123,21 +1196,44 @@ bool pointDecisionAlgorithm(RSU &rsu)
 			{
 				// if a neighbor is covering the cell too and is worse than our coverage
 				if(signalMap.map[rsu.xcell-PARKEDCELLRANGE+xx][rsu.ycell-PARKEDCELLRANGE+yy] < rsu.coverage.map[xx][yy])
+				{
 					// add delta to the count
 					utility += rsu.coverage.map[xx][yy] - signalMap.map[rsu.xcell-PARKEDCELLRANGE+xx][rsu.ycell-PARKEDCELLRANGE+yy];
+					debugPos += rsu.coverage.map[xx][yy] - signalMap.map[rsu.xcell-PARKEDCELLRANGE+xx][rsu.ycell-PARKEDCELLRANGE+yy];
+				}
 				else
+				{
 					// just add our own coverage to the count
 					utility += rsu.coverage.map[xx][yy];
+					debugPos += rsu.coverage.map[xx][yy];
+				}
 
 				// Add redundancy penalty. If there's an RSU covering this area already, penalize.
-				// TODO: square the new redundancy so as to more strongly penalize redundancy.
+				// Perhaps: square the new redundancy so as to more strongly penalize redundancy.
 				// e.g.: going to 4 -> penalty 16
-				if(redundancyMap[rsu.xcell-PARKEDCELLRANGE+xx][rsu.ycell-PARKEDCELLRANGE+yy])
-					utility -= redundancyMap[rsu.xcell-PARKEDCELLRANGE+xx][rsu.ycell-PARKEDCELLRANGE+yy];
+				if(redundancyMap.map[rsu.xcell-PARKEDCELLRANGE+xx][rsu.ycell-PARKEDCELLRANGE+yy])
+				{
+					utility -= redundancyMap.map[rsu.xcell-PARKEDCELLRANGE+xx][rsu.ycell-PARKEDCELLRANGE+yy];
+					debugNeg += redundancyMap.map[rsu.xcell-PARKEDCELLRANGE+xx][rsu.ycell-PARKEDCELLRANGE+yy];
+				}
 			}
 
+	// Update stats on the RSU
+	rsu.utility = utility;
+	rsu.utilPos = debugPos;
+	rsu.utilNeg = debugNeg;
 
+	if(gm_debug) cout << "DEBUG CLASSIFIER "
+			<< " RSU id " << rsu.id
+			<< " score " << utility
+			<< " pos " << debugPos
+			<< " neg " << debugNeg
+			<< endl;
 
+	if(utility>0)
+		return true;
+	else
+		return false;
 }
 
 

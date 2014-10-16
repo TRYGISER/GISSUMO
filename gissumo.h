@@ -179,6 +179,10 @@ public:
 	bool triggerDecision=false;
 	// last time this RSU's coverage map was updated, for statistics
 	float lastTimeUpdated=0;
+
+	// decision algorithm statistics
+	signed short utility=0;
+	unsigned short utilPos=0, utilNeg=0;
 };
 
 
