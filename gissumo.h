@@ -270,11 +270,14 @@ map<int,unsigned short> getCoverageStatistics (CityMapNum cmap);
 // Determines the overcoverage metric. Supply a map with RSU counts, not signal levels.
 unsigned short getOvercoverageMetric (CityMapNum cmap, short cap);
 
+// Determines the mean RSU saturation. Supply a map with RSU counts, not signal levels.
+float getMeanSaturation (CityMapNum cmap);
+
 // Run the decision algorithm to determine whether an RSU should remain active.
 bool decisionAlgorithm(RSU &rsu);
 
-// A decision algorithm by points.
-bool pointDecisionAlgorithm(RSU &rsu);
+// A decision algorithm by points. Variables kappa, lambda and mu control the weight of the decision algo.
+bool pointDecisionAlgorithm(RSU &rsu, float kappa, float lambda, float mu);
 
 // Prints ASCII of a local coverage map.
 void printLocalCoverage(CoverageMap coverage);

@@ -44,6 +44,7 @@ int main(int argc, char *argv[])
 	string m_fcdFile = "./fcdoutput.xml";
 	string m_rsuFile = "./rsudata.tsv";
 	unsigned short m_pause = 0;
+	float m_kappa=1.0, m_lambda=1.0, m_mu=1.0;
 
 	// List of command line options
 	options_description cliOptDesc("Options");
@@ -71,6 +72,9 @@ int main(int argc, char *argv[])
 	    ("debug-cell-maps", "debug cell map updates")
 	    ("debug-map-broadcast", "debug coverage map broadcasting")
 		("debug-rsu-map", boost::program_options::value<unsigned short>(), "prints the evolution of a specific RSU's map")
+		("kappa", boost::program_options::value<float>(), "coefficient 'kappa' of the decision algorithm")
+		("lambda", boost::program_options::value<float>(), "coefficient 'lambda' of the decision algorithm")
+		("mu", boost::program_options::value<float>(), "coefficient 'mu' of the decision algorithm")
 	    ("help", "give this help list")
 	;
 
@@ -105,6 +109,9 @@ int main(int argc, char *argv[])
 	if (varMap.count("print-combination"))		m_printCombination=varMap["print-combination"].as<uint32_t>();
 	if (varMap.count("fcd-data"))				m_fcdFile=varMap["fcd-data"].as<string>();
 	if (varMap.count("rsu-data"))				m_rsuFile=varMap["rsu-data"].as<string>();
+	if (varMap.count("kappa")) 					m_kappa=varMap["kappa"].as<float>();
+	if (varMap.count("lambda")) 				m_lambda=varMap["lambda"].as<float>();
+	if (varMap.count("mu")) 					m_mu=varMap["mu"].as<float>();
 	if (varMap.count("help")) 					{ cout << cliOptDesc; return 1; }
 
 	cout << "BEGIN FCD FILE " << m_fcdFile << endl;
@@ -432,7 +439,8 @@ int main(int argc, char *argv[])
 				/* Run the decision if we got a trigger to broadcast or to decide
 				 */
 				if( m_decisionMode==1 && (iterRSU->triggerBroadcast || iterRSU->triggerDecision) )
-					iterRSU->active = pointDecisionAlgorithm(*iterRSU);		// Use classifier
+					iterRSU->active = pointDecisionAlgorithm(*iterRSU, m_kappa, m_lambda, m_mu);		// Use classifier
+//					iterRSU->active = pointDecisionAlgorithm(*iterRSU);		// Use classifier
 //					iterRSU->active = decisionAlgorithm(*iterRSU);			// Use cell overlap
 
 				// Inform if the RSU switched states now.
@@ -651,11 +659,19 @@ int main(int argc, char *argv[])
 
 		// Go through active RSUs and place them in the global map
 		CityMapNum cityCoverageSignal, cityCoverageCount;
+		unsigned short activeRSUcount=0;
+
+		cout << "Coefficients:"
+				<< " kappa " << m_kappa
+				<< " lambda " << m_lambda
+				<< " mu " << m_mu
+				<< endl;
 
 		cout << "Active RSUs: ";
 		for(list<RSU>::iterator iterRSU=rsuList.begin(); iterRSU != rsuList.end(); iterRSU++)
 			if(iterRSU->active)
 			{
+				activeRSUcount++;
 				cout << iterRSU->id << ' ';
 				applyCountToCityMap(iterRSU->coverage, cityCoverageCount);
 				applyCoverageToCityMap(iterRSU->coverage, cityCoverageSignal);
@@ -681,6 +697,18 @@ int main(int argc, char *argv[])
 			<< over1 << '\t'
 			<< over2 << '\t'
 			<< over3 << endl;
+
+		// get the average signal
+		float meanSignalCoverage = (float)(covStat[2]*2 + covStat[3]*3 + covStat[4]*4 + covStat[5]*5)/(float)(covStat[2]+covStat[3]+covStat[4]+covStat[5]);
+		// get the average saturation
+		float meanRSUsaturation = getMeanSaturation(cityCoverageCount);
+		// output
+		cout << '\n' << "STAT\tavgSig\tavgSat\trsuCnt" << endl;
+		cout << '\t'
+					<< meanSignalCoverage << '\t'
+					<< meanRSUsaturation << '\t'
+					<< activeRSUcount << '\t'
+					<< endl;
 
 		// Print each RSUs utility scores
 		if(gm_debug)
@@ -1075,6 +1103,21 @@ unsigned short getOvercoverageMetric (CityMapNum cmap, short cap)
 	return metric;
 }
 
+float getMeanSaturation (CityMapNum cmap)
+{
+	float metric=0; unsigned short cellCount=0;
+
+	for(short yy=0; yy<CITYWIDTH; yy++)
+		for(short xx=0; xx<CITYHEIGHT; xx++)
+			if(cmap.map[yy][xx] > 0)
+				{
+					cellCount++;
+					metric += cmap.map[yy][xx];
+				}
+
+	return ( metric/(float)cellCount );
+}
+
 void applyCoverageToCityMap (CoverageMap coverage, CityMapNum &city)
 {
 	for(short xx=0; xx<PARKEDCELLCOVERAGE; xx++)
@@ -1155,7 +1198,7 @@ bool decisionAlgorithm(RSU &rsu)
 		return false;
 }
 
-bool pointDecisionAlgorithm(RSU &rsu)
+bool pointDecisionAlgorithm(RSU &rsu, float kappa, float lambda, float mu)
 {
 	// Returns whether the RSU should remain active (true) or not (false).
 
@@ -1209,8 +1252,8 @@ bool pointDecisionAlgorithm(RSU &rsu)
 
 
 	// Compute utility
-	utility = dnew + dboost - dsat;
-//	utility = kappa*dnew + lambda*dboost - mu*dsat;
+//	utility = dnew + dboost - dsat;
+	utility = kappa*dnew + lambda*dboost - mu*dsat;
 
 	// Update stats on the RSU
 	rsu.utility = utility;
