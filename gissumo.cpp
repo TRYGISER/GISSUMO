@@ -685,13 +685,14 @@ int main(int argc, char *argv[])
 		// Print each RSUs utility scores
 		if(gm_debug)
 		{
-			cout << "RSU scores: \n" << "ID\tactive\tutility\tutilPos\tutilNeg\n";
+			cout << "RSU scores: \n" << "ID\tactive\tutility\tdnew\tdboost\tdsat\n";
 			for(list<RSU>::iterator iterRSU=rsuList.begin(); iterRSU != rsuList.end(); iterRSU++)
 			cout << iterRSU->id
 				<< '\t' << (iterRSU->active?"yes":"no")
 				<< '\t' << iterRSU->utility
-				<< '\t' << iterRSU->utilPos
-				<< '\t' << iterRSU->utilNeg
+				<< '\t' << iterRSU->dnew
+				<< '\t' << iterRSU->dboost
+				<< '\t' << iterRSU->dsat
 				<< endl;
 		}
 
@@ -1187,8 +1188,7 @@ bool pointDecisionAlgorithm(RSU &rsu)
 
 	// Compute utility
 	signed short utility=0;
-//	signed short isolatedUtility=0;
-	signed short debugPos=0, debugNeg=0;
+	signed short dnew=0, dboost=0, dsat=0;
 
 	for(short xx=0; xx<PARKEDCELLCOVERAGE; xx++)
 		for(short yy=0; yy<PARKEDCELLCOVERAGE; yy++)
@@ -1196,38 +1196,34 @@ bool pointDecisionAlgorithm(RSU &rsu)
 			{
 				// if a neighbor is covering the cell too and is worse than our coverage
 				if(signalMap.map[rsu.xcell-PARKEDCELLRANGE+xx][rsu.ycell-PARKEDCELLRANGE+yy] < rsu.coverage.map[xx][yy])
-				{
-					// add delta to the count
-					utility += rsu.coverage.map[xx][yy] - signalMap.map[rsu.xcell-PARKEDCELLRANGE+xx][rsu.ycell-PARKEDCELLRANGE+yy];
-					debugPos += rsu.coverage.map[xx][yy] - signalMap.map[rsu.xcell-PARKEDCELLRANGE+xx][rsu.ycell-PARKEDCELLRANGE+yy];
-				}
+					dboost += rsu.coverage.map[xx][yy] - signalMap.map[rsu.xcell-PARKEDCELLRANGE+xx][rsu.ycell-PARKEDCELLRANGE+yy];
+
+				// if we're the only to cover the cell
 				else
-				{
-					// just add our own coverage to the count
-					utility += rsu.coverage.map[xx][yy];
-					debugPos += rsu.coverage.map[xx][yy];
-				}
+					dnew += rsu.coverage.map[xx][yy];
 
 				// Add redundancy penalty. If there's an RSU covering this area already, penalize.
-				// Perhaps: square the new redundancy so as to more strongly penalize redundancy.
-				// e.g.: going to 4 -> penalty 16
 				if(redundancyMap.map[rsu.xcell-PARKEDCELLRANGE+xx][rsu.ycell-PARKEDCELLRANGE+yy])
-				{
-					utility -= redundancyMap.map[rsu.xcell-PARKEDCELLRANGE+xx][rsu.ycell-PARKEDCELLRANGE+yy];
-					debugNeg += redundancyMap.map[rsu.xcell-PARKEDCELLRANGE+xx][rsu.ycell-PARKEDCELLRANGE+yy];
-				}
+					dsat = redundancyMap.map[rsu.xcell-PARKEDCELLRANGE+xx][rsu.ycell-PARKEDCELLRANGE+yy]+1;
 			}
+
+
+	// Compute utility
+	utility = dnew + dboost - dsat;
+//	utility = kappa*dnew + lambda*dboost - mu*dsat;
 
 	// Update stats on the RSU
 	rsu.utility = utility;
-	rsu.utilPos = debugPos;
-	rsu.utilNeg = debugNeg;
+	rsu.dnew = dnew;
+	rsu.dboost = dboost;
+	rsu.dsat = dsat;
 
 	if(gm_debug) cout << "DEBUG CLASSIFIER "
 			<< " RSU id " << rsu.id
 			<< " score " << utility
-			<< " pos " << debugPos
-			<< " neg " << debugNeg
+			<< " dnew " << dnew
+			<< " dboost " << dboost
+			<< " dsat " << dsat
 			<< endl;
 
 	if(utility>0)

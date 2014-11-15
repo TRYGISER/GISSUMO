@@ -182,7 +182,7 @@ public:
 
 	// decision algorithm statistics
 	signed short utility=0;
-	unsigned short utilPos=0, utilNeg=0;
+	unsigned short dnew=0, dboost=0, dsat=0;
 };
 
 
