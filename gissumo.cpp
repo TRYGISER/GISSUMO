@@ -1231,23 +1231,24 @@ bool pointDecisionAlgorithm(RSU &rsu, float kappa, float lambda, float mu)
 
 	// Compute utility
 	signed short utility=0;
-	signed short dnew=0, dboost=0, dsat=0;
+	unsigned short dnew=0, dboost=0, dsat=0;
 
 	for(short xx=0; xx<PARKEDCELLCOVERAGE; xx++)
 		for(short yy=0; yy<PARKEDCELLCOVERAGE; yy++)
 			if(rsu.coverage.map[xx][yy]) // if we're covering this cell
 			{
 				// if a neighbor is covering the cell too and is worse than our coverage
-				if(signalMap.map[rsu.xcell-PARKEDCELLRANGE+xx][rsu.ycell-PARKEDCELLRANGE+yy] < rsu.coverage.map[xx][yy])
-					dboost += rsu.coverage.map[xx][yy] - signalMap.map[rsu.xcell-PARKEDCELLRANGE+xx][rsu.ycell-PARKEDCELLRANGE+yy];
+				if(signalMap.map[rsu.xcell-PARKEDCELLRANGE+xx][rsu.ycell-PARKEDCELLRANGE+yy]>0)
+					if(signalMap.map[rsu.xcell-PARKEDCELLRANGE+xx][rsu.ycell-PARKEDCELLRANGE+yy] < rsu.coverage.map[xx][yy])
+						dboost += rsu.coverage.map[xx][yy] - signalMap.map[rsu.xcell-PARKEDCELLRANGE+xx][rsu.ycell-PARKEDCELLRANGE+yy];
 
 				// if we're the only to cover the cell
-				else
+				if(signalMap.map[rsu.xcell-PARKEDCELLRANGE+xx][rsu.ycell-PARKEDCELLRANGE+yy]==0)
 					dnew += rsu.coverage.map[xx][yy];
 
 				// Add redundancy penalty. If there's an RSU covering this area already, penalize.
-				if(redundancyMap.map[rsu.xcell-PARKEDCELLRANGE+xx][rsu.ycell-PARKEDCELLRANGE+yy])
-					dsat = redundancyMap.map[rsu.xcell-PARKEDCELLRANGE+xx][rsu.ycell-PARKEDCELLRANGE+yy]+1;
+				if(redundancyMap.map[rsu.xcell-PARKEDCELLRANGE+xx][rsu.ycell-PARKEDCELLRANGE+yy]>0)
+					dsat += redundancyMap.map[rsu.xcell-PARKEDCELLRANGE+xx][rsu.ycell-PARKEDCELLRANGE+yy]+1;
 			}
 
 
