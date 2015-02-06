@@ -76,7 +76,7 @@ using namespace boost::program_options;
 // A char map to keep data for 2D visualization (terminal output)
 class CityMapChar {
 public:
-	array< array<char,CITYHEIGHT>,CITYWIDTH > map;	// city coverage map, (0,0) on Top Left
+	std::array< std::array<char,CITYHEIGHT>,CITYWIDTH > map;	// city coverage map, (0,0) on Top Left
 
 	CityMapChar() { for(int i=0; i<CITYWIDTH; i++) map[i].fill(' '); }
 	CityMapChar(char fill) { for(int i=0; i<CITYWIDTH; i++) map[i].fill(fill); }
@@ -85,7 +85,7 @@ public:
 // A numeric map for keeping data in memory, such as coverage levels
 class CityMapNum {
 public:
-	array< array<short,CITYHEIGHT>,CITYWIDTH > map;	// city coverage map, (0,0) on Top Left
+	std::array< std::array<short,CITYHEIGHT>,CITYWIDTH > map;	// city coverage map, (0,0) on Top Left
 
 	CityMapNum() { for(int i=0; i<CITYWIDTH; i++) map[i].fill(0); }
 	CityMapNum(int fill) { for(int i=0; i<CITYWIDTH; i++) map[i].fill(fill); }
@@ -112,7 +112,7 @@ struct Packet
  */
 class CoverageMap {
 public:
-	array< array<unsigned short,PARKEDCELLCOVERAGE>,PARKEDCELLCOVERAGE > map;
+	std::array< std::array<unsigned short,PARKEDCELLCOVERAGE>,PARKEDCELLCOVERAGE > map;
 	unsigned short xcenter;
 	unsigned short ycenter;
 
